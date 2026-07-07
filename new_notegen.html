@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BT Call Notes Generator - Refactored</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --bt-purple: #5514B4;
+    --bt-purple-dark: #440389;
+    --bt-purple-light: #f3ecfc;
+    --accent: #e60050;
+    --text-dark: #1a1a1a;
+    --text-muted: #666;
+    --surface: #fafafa;
+    --border-focus: #5514B4;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--bt-purple) 0%, var(--bt-purple-dark) 100%);
+    color: var(--text-dark);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .topbar {
+    background: var(--bt-purple);
+    color: white;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-bottom: 2rem;
+    border-radius: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+  }
+
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bt-logo {
+    background: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: var(--bt-purple);
+    flex-shrink: 0;
+  }
+
+  .topbar-title {
+    font-weight: 800;
+    font-size: 16px;
+  }
+
+  .topbar-sub {
+    font-size: 12px;
+    opacity: 0.75;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  #clock {
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.12);
+    padding: 6px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: auto;
+    padding-top: 100px;
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  .step-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e8e8e8;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .step-badge.active {
+    background: var(--bt-purple);
+    color: white;
+    box-shadow: 0 0 0 4px rgba(85,20,180,0.15);
+  }
+
+  .step-badge.completed {
+    background: #4ade80;
+    color: white;
+  }
+
+  .step-connector {
+    width: 24px;
+    height: 2px;
+    background: #e8e8e8;
+    transition: background 0.3s ease;
+  }
+
+  .step-connector.active {
+    background: var(--bt-purple);
+  }
+
+  .card {
+    background: white;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-md);
+    animation: slideIn 0.3s ease-in-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--bt-purple);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: "";
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(180deg, var(--bt-purple), var(--accent));
+    border-radius: 2px;
+  }
+
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    border: 1.5px solid rgba(200,205,215,0.8);
+    outline: none;
+    width: 100%;
+    background: white;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 4px rgba(85,20,180,0.15);
+  }
+
+  .badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .badge {
+    padding: 10px 16px;
+    border-radius: 30px;
+    background: white;
+    border: 1.5px solid #d0d0d0;
+    color: var(--text-dark);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .badge:hover {
+    border-color: var(--bt-purple);
+    color: var(--bt-purple);
+  }
+
+  .badge.active {
+    background: var(--bt-purple);
+    color: white;
+    border-color: var(--bt-purple-dark);
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 2rem;
+    justify-content: space-between;
+  }
+
+  button {
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 700;
+    padding: 12px 22px;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    transition: opacity 0.15s;
+    flex: 1;
+  }
+
+  button:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--bt-purple);
+    color: white;
+  }
+
+  .btn-secondary {
+    background: white;
+    border: 1.5px solid #cbd5e1;
+    color: var(--text-muted);
+  }
+
+  .footer {
+    text-align: center;
+    margin: 3rem 0;
+    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    padding-bottom: 2rem;
+  }
+
+  .step-content {
+    display: none;
+    min-height: 300px;
+  }
+
+  .step-content.active {
+    display: block;
+  }
+
+  @media (max-width: 650px) {
+    .topbar {
+      padding: 1rem;
+    }
+    .topbar-brand {
+      gap: 8px;
+    }
+    .topbar-title {
+      font-size: 14px;
+    }
+    .card {
+      padding: 1.5rem;
+    }
+    .controls {
+      flex-direction: column;
+    }
+    button {
+      width: 100%;
+    }
+    .badge-group {
+      gap: 8px;
+    }
+    .badge {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="bt-logo">BT</div>
+    <div>
+      <div class="topbar-title">Call Notes Generator</div>
+      <div class="topbar-sub">Business Repairs · Refactored</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div id="clock"></div>
+  </div>
+</div>
+
+<div class="page">
+  
+  <!-- STEP INDICATOR -->
+  <div class="step-indicator">
+    <div class="step-badge active" id="badge-1">1</div>
+    <div class="step-connector" id="conn-1-2"></div>
+    <div class="step-badge" id="badge-2">2</div>
+    <div class="step-connector" id="conn-2-3"></div>
+    <div class="step-badge" id="badge-3">3</div>
+    <div class="step-connector" id="conn-3-4"></div>
+    <div class="step-badge" id="badge-4">4</div>
+    <div class="step-connector" id="conn-4-5"></div>
+    <div class="step-badge" id="badge-5">5</div>
+    <div class="step-connector" id="conn-5-6"></div>
+    <div class="step-badge" id="badge-6">6</div>
+    <div class="step-connector" id="conn-6-7"></div>
+    <div class="step-badge" id="badge-7">7</div>
+  </div>
+
+  <!-- STEP 1: SERVICE ID -->
+  <div class="step-content active" id="step-1">
+    <div class="card">
+      <div class="card-title">What is the customer's account identifier?</div>
+      <div class="card-subtitle">Once you have entered the account identifier, press Enter on your keyboard to proceed.</div>
+      
+      <div class="field">
+        <label>Service ID / Account Number *</label>
+        <input type="text" id="service-id" placeholder="e.g., FBTH0367843" autofocus>
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" disabled>Back</button>
+        <button class="btn-primary" onclick="goToStep(2)">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: NEW vs EXISTING -->
+  <div class="step-content" id="step-2">
+    <div class="card">
+      <div class="card-title">Is this a new or existing issue?</div>
+      <div class="card-subtitle">Select whether this is a call about a new issue or an ongoing/existing issue.</div>
+      
+      <div class="field">
+        <div class="badge-group">
+          <span class="badge" onclick="selectIssueType('existing')">Existing Issue/Call</span>
+          <span class="badge" onclick="selectIssueType('new')">New Issue/Call</span>
+        </div>
+        <input type="hidden" id="issue-type">
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" onclick="goToStep(1)">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: CATEGORY -->
+  <div class="step-content" id="step-3">
+    <div class="card">
+      <div class="card-title">What type of call is this?</div>
+      <div class="card-subtitle">Select the primary category for this call.</div>
+      
+      <div class="field">
+        <div class="badge-group" id="category-group">
+          <!-- Populated by JavaScript -->
+        </div>
+        <input type="hidden" id="category">
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" onclick="goToStep(2)">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: SUBCATEGORY/ISSUE TYPE -->
+  <div class="step-content" id="step-4">
+    <div class="card">
+      <div class="card-title" id="step-4-title">Step 4</div>
+      <div class="card-subtitle" id="step-4-subtitle"></div>
+      
+      <div class="field">
+        <div class="badge-group" id="subcategory-group">
+          <!-- Populated dynamically -->
+        </div>
+        <input type="hidden" id="subcategory">
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" onclick="goToStep(3)">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: CAUSE/REASON -->
+  <div class="step-content" id="step-5">
+    <div class="card">
+      <div class="card-title" id="step-5-title">Step 5</div>
+      <div class="card-subtitle" id="step-5-subtitle"></div>
+      
+      <div class="field">
+        <div class="badge-group" id="cause-group">
+          <!-- Populated dynamically -->
+        </div>
+        <input type="hidden" id="cause">
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" onclick="goToStep(4)">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6: OUTCOME/RESULT -->
+  <div class="step-content" id="step-6">
+    <div class="card">
+      <div class="card-title" id="step-6-title">Step 6</div>
+      <div class="card-subtitle" id="step-6-subtitle"></div>
+      
+      <div class="field">
+        <div class="badge-group" id="outcome-group">
+          <!-- Populated dynamically -->
+        </div>
+        <input type="hidden" id="outcome">
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" onclick="goToStep(5)">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 7: CALL DETAILS -->
+  <div class="step-content" id="step-7">
+    <div class="card">
+      <div class="card-title">Call Details</div>
+      
+      <div class="field">
+        <label>Customer Name</label>
+        <input type="text" id="customer-name" placeholder="Full name">
+      </div>
+
+      <div class="field">
+        <label>Mobile Contact Number</label>
+        <input type="text" id="mobile-contact" placeholder="Contact number">
+      </div>
+
+      <div class="field">
+        <label>Call Notes</label>
+        <textarea id="call-notes" placeholder="Enter call details..."></textarea>
+      </div>
+
+      <div class="controls">
+        <button class="btn-secondary" onclick="goToStep(6)">Back</button>
+        <button class="btn-primary" onclick="generateNote()">Generate Note</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">BT Call Notes Generator — offline tool — no data leaves this page</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════════════════
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════════════════
+// CALL CATEGORIES & SUBCATEGORIES DATA
+// ═══════════════════════════════════════════════════════════════════
+const CALL_CATEGORIES = {
+  'Broadband/FTTP/FTTP Repair': [
+    'Customer calling to make changes to fault',
+    'Customer chasing an engineer',
+    'Customer didn\'t want to wait for an update',
+    'Customer looking for back-up Broadband solution',
+    'Customer saw that KCI or Online Journey said fault cleared/closed, but issue not fixed',
+    'Customer was chasing an overdue callback',
+    'Customer was chasing for an update after SLA as still not resolved'
+  ],
+  'Call Dropped/Inactive Chat': [
+    'Call disconnected unexpectedly',
+    'Customer initiated disconnect',
+    'Network issue during call',
+    'Other reason'
+  ],
+  'CV/SIP Repair': [
+    'Customer calling to make changes to fault',
+    'Customer chasing an engineer',
+    'Customer didn\'t want to wait for an update',
+    'Customer was chasing for an update after SLA as still not resolved'
+  ],
+  'CVE Repair': [
+    'Customer calling to make changes to fault',
+    'Customer chasing an engineer',
+    'Customer didn\'t want to wait for an update',
+    'Customer was chasing for an update after SLA as still not resolved'
+  ],
+  'DV Repair': [
+    'Customer calling to make changes to fault',
+    'Customer chasing an engineer',
+    'Customer didn\'t want to wait for an update',
+    'Customer was chasing for an update after SLA as still not resolved'
+  ],
+  'Email and VAS Products': [
+    'Service issue',
+    'Account inquiry',
+    'Configuration assistance',
+    'Other'
+  ],
+  'Failed Validation': [
+    'Customer details not matching',
+    'Not a registered contact',
+    'Account verification failed',
+    'Other'
+  ],
+  'Internal Consult': [
+    'Level 2 escalation',
+    'Technical consultation',
+    'Account authorization needed',
+    'Other'
+  ],
+  'Misrouted call': [
+    'Wrong department',
+    'Wrong product type',
+    'Customer inquiry for another provider',
+    'Transferred to correct team'
+  ],
+  'Non-BT Customer/Unable to validate account': [
+    'Consumer account inquiry',
+    'Non-BT service',
+    'Cannot verify account',
+    'Third party call'
+  ],
+  'Online Profile/MyAccount/Account contacts': [
+    'Password reset',
+    'Contact information update',
+    'Account access issue',
+    'Profile management'
+  ],
+  'PDPL Repair': [
+    'Service degradation',
+    'Complete service loss',
+    'Intermittent issues',
+    'Performance complaint'
+  ],
+  'Protective Migrations': [
+    'Migration in progress',
+    'Migration delay',
+    'Migration support',
+    'Post-migration issue'
+  ],
+  'PSTN/ISDN Repair': [
+    'No dial tone',
+    'Call quality issue',
+    'Line registration failure',
+    'Other fault'
+  ],
+  'System error/Systems not working': [
+    'Portal access issue',
+    'Billing system error',
+    'Account system down',
+    'Other system issue'
+  ]
+};
+
+// Cause options for specific subcategories
+const CAUSE_OPTIONS = {
+  'Customer calling to make changes to fault': [
+    'Appointment changes/cancellation request',
+    'Customer closed fault incorrectly',
+    'Customer felt fault was taking too long, even though it was within SLA',
+    'Engineer related issues',
+    'Failed contact with customer',
+    'Missed SLA',
+    'MSO',
+    'Process/System issue',
+    'Supplier cleared, but fault still exists',
+    'Technical issue',
+    'Unclear expectations set/Back-up broadband not offered'
+  ],
+  'Appointment changes/cancellation request': [
+    '3rd party equipment issue',
+    'Booked the fault to Openreach',
+    'Issue resolved',
+    'MSO update provided',
+    'Replaced equipment',
+    'Sent to supplier for further tests',
+    'Transferred to Consumer',
+    'Transferred to CV',
+    'Transferred to CVE',
+    'Transferred to Tier 2'
+  ],
+  'Customer closed fault incorrectly': [
+    'Reopened the fault on customer behalf',
+    'Customer advised to reopen via online portal',
+    'Issue still exists after closure',
+    'Escalated to supplier for further investigation',
+    'Reassigned to engineer for follow-up',
+    'No further action required at this time'
+  ],
+  'Customer felt fault was taking too long, even though it was within SLA': [
+    'Explained SLA timescales and next engineer visit',
+    'Logged customer concern with priority notes',
+    'Offered callback for update when available',
+    'Escalated to supervisor for faster update',
+    'Confirmed the fault remains in progress'
+  ],
+  'Failed contact with customer': [
+    'Attempted customer contact but no answer',
+    'Left voicemail requesting callback',
+    'Sent SMS requesting callback',
+    'Customer requested a later return call',
+    'Updated note for next attempt'
+  ],
+  'Missed SLA': [
+    'Advised customer of missed SLA and next available appointment',
+    'Logged as SLA breach and escalated to priority team',
+    'Customer asked for update when engineer is en route',
+    'Checked current presence of any back-up service options',
+    'Confirmed new timeout and next action with customer'
+  ],
+  'MSO': [
+    'MSO reviewed and confirmed no system issue',
+    'MSO advised to refresh or retry after delay',
+    'MSO requested a follow-up call if issue persists',
+    'MSO confirmed issue as external to BT network',
+    'MSO recommended raising a supplier ticket'
+  ],
+  'Process/System issue': [
+    'Raised ticket with systems team for resolution',
+    'Confirmed system issue logged and monitored',
+    'Advised customer to retry after system restore',
+    'Escalated to IT support for urgent investigation',
+    'Documented issue and advised customer of next steps'
+  ],
+  'Supplier cleared, but fault still exists': [
+    'Logged supplier clearance and fault persistence',
+    'Escalated to supplier for further investigation',
+    'Requested a new engineer appointment',
+    'Confirmed system checks remain incomplete',
+    'Updated customer with next expected action'
+  ],
+  'Technical issue': [
+    'Logged technical fault and raised internal ticket',
+    'Confirmed issue as equipment or network related',
+    'Advised customer of engineering review',
+    'Escalated to technical specialist team',
+    'Scheduled follow-up once diagnostics complete'
+  ],
+  'Customer chasing an engineer': [
+    'Appointment changes/cancellation request',
+    'Customer closed fault incorrectly',
+    'Customer felt fault was taking too long, even though it was within SLA',
+    'Engineer related issues',
+    'Failed contact with customer',
+    'Missed SLA',
+    'MSO',
+    'Process/System issue',
+    'Supplier cleared, but fault still exists',
+    'Technical issue',
+    'Unclear expectations set/Back-up broadband not offered'
+  ],
+  'Unclear expectations set/Back-up broadband not offered': [
+    '3rd party equipment issue',
+    'Booked the fault to Openreach',
+    'Issue resolved',
+    'MSO update provided',
+    'Replaced equipment',
+    'Sent to supplier for further tests',
+    'Transferred to Consumer',
+    'Transferred to CV',
+    'Transferred to CVE',
+    'Transferred to Tier 2'
+  ],
+  'Engineer related issues': [
+    'Engineer attended and found issue on site',
+    'Engineer unable to access premises',
+    'Engineer identified third-party fault',
+    'Engineer requested further diagnostics',
+    'Engineer rescheduled the appointment'
+  ]
+};
+
+const SUBCATEGORY_LABELS = {
+  'Broadband/FTTP/FTTP Repair': 'What type of issue is the customer reporting?',
+  'Call Dropped/Inactive Chat': 'What was the cause?',
+  'CV/SIP Repair': 'What type of issue is the customer reporting?',
+  'CVE Repair': 'What type of issue is the customer reporting?',
+  'DV Repair': 'What type of issue is the customer reporting?',
+  'Email and VAS Products': 'What is the issue?',
+  'Failed Validation': 'What was the validation issue?',
+  'Internal Consult': 'What is the consultation type?',
+  'Misrouted call': 'Where should this call be routed?',
+  'Non-BT Customer/Unable to validate account': 'What is the issue?',
+  'Online Profile/MyAccount/Account contacts': 'What is the customer requesting?',
+  'PDPL Repair': 'What is the issue?',
+  'Protective Migrations': 'What is the migration issue?',
+  'PSTN/ISDN Repair': 'What type of issue is the customer reporting?',
+  'System error/Systems not working': 'What system is affected?'
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STEP MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+let currentStep = 1;
+
+function goToStep(step) {
+  if (step < 1 || step > 7) return;
+
+  // Validate current step before advancing
+  if (currentStep < step) {
+    if (!validateStep(currentStep)) return;
+  }
+
+  // If going to step 5, check if we should skip it (no cause options)
+  if (step === 5 && !hasCauseOptions()) {
+    // Skip to step 6 instead
+    return goToStep(6);
+  }
+
+  // Hide all steps
+  document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+  
+  // Show target step
+  const target = document.getElementById(`step-${step}`);
+  if (target) {
+    target.classList.add('active');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Populate subcategories when going to step 4
+  if (step === 4) {
+    populateSubcategories();
+  }
+
+  // Populate causes when going to step 5
+  if (step === 5) {
+    populateCauses();
+  }
+
+  // Populate outcomes when going to step 6
+  if (step === 6) {
+    populateOutcomes();
+  }
+
+  // Update indicator
+  updateIndicator(step);
+  currentStep = step;
+
+  // Auto-focus first input
+  setTimeout(() => {
+    const input = target?.querySelector('input, textarea, select');
+    if (input) input.focus();
+  }, 300);
+}
+
+function updateIndicator(active) {
+  for (let i = 1; i <= 7; i++) {
+    const badge = document.getElementById(`badge-${i}`);
+    const conn = document.getElementById(`conn-${i}-${i+1}`);
+
+    if (badge) {
+      badge.classList.remove('active', 'completed');
+      if (i === active) {
+        badge.classList.add('active');
+      } else if (i < active) {
+        badge.classList.add('completed');
+      }
+    }
+
+    if (conn && i < 7) {
+      conn.classList.remove('active');
+      if (i < active) {
+        conn.classList.add('active');
+      }
+    }
+  }
+}
+
+function validateStep(step) {
+  if (step === 1) {
+    const serviceId = document.getElementById('service-id').value.trim();
+    if (!serviceId) {
+      alert('Please enter a Service ID / Account Number');
+      return false;
+    }
+    return true;
+  }
+
+  if (step === 2) {
+    const issueType = document.getElementById('issue-type').value;
+    if (!issueType) {
+      alert('Please select whether this is a new or existing issue');
+      return false;
+    }
+    return true;
+  }
+
+  if (step === 3) {
+    const category = document.getElementById('category').value;
+    if (!category) {
+      alert('Please select a category');
+      return false;
+    }
+    return true;
+  }
+
+  if (step === 4) {
+    const subcategory = document.getElementById('subcategory').value;
+    if (!subcategory) {
+      alert('Please select an issue type');
+      return false;
+    }
+    return true;
+  }
+
+  if (step === 5) {
+    const cause = document.getElementById('cause').value;
+    // Only validate cause if it's required for this subcategory
+    if (hasCauseOptions() && !cause) {
+      alert('Please select a cause or reason');
+      return false;
+    }
+    return true;
+  }
+
+  if (step === 6) {
+    const outcome = document.getElementById('outcome').value;
+    // Only validate outcome if it's required for this cause
+    if (hasOutcomeOptions() && !outcome) {
+      alert('Please select an outcome');
+      return false;
+    }
+    return true;
+  }
+
+  return true;
+}
+
+function hasCauseOptions() {
+  const subcategory = document.getElementById('subcategory').value;
+  return CAUSE_OPTIONS[subcategory] && CAUSE_OPTIONS[subcategory].length > 0;
+}
+
+function hasOutcomeOptions() {
+  const cause = document.getElementById('cause').value;
+  return CAUSE_OPTIONS[cause] && CAUSE_OPTIONS[cause].length > 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SELECTIONS
+// ═══════════════════════════════════════════════════════════════════
+function selectIssueType(type) {
+  document.getElementById('issue-type').value = type;
+  
+  // Update badges
+  document.querySelectorAll('#step-2 .badge').forEach((badge, i) => {
+    badge.classList.toggle('active', 
+      (i === 0 && type === 'existing') || (i === 1 && type === 'new')
+    );
+  });
+
+  goToStep(3);
+}
+
+function selectCategory(category) {
+  document.getElementById('category').value = category;
+  
+  // Update badges
+  document.querySelectorAll('#category-group .badge').forEach(badge => {
+    badge.classList.toggle('active', badge.textContent.trim() === category);
+  });
+
+  // Clear previous subcategory selection
+  document.getElementById('subcategory').value = '';
+  document.getElementById('cause').value = '';
+  document.getElementById('outcome').value = '';
+
+  if (document.getElementById('step-4').classList.contains('active')) {
+    populateSubcategories();
+  }
+
+  goToStep(4);
+}
+
+function selectSubcategory(subcategory) {
+  document.getElementById('subcategory').value = subcategory;
+  
+  // Update badges
+  document.querySelectorAll('#subcategory-group .badge').forEach(badge => {
+    badge.classList.toggle('active', badge.textContent.trim() === subcategory);
+  });
+
+  // Clear previous cause selection
+  document.getElementById('cause').value = '';
+  document.getElementById('outcome').value = '';
+
+  goToStep(5);
+}
+
+function selectCause(cause) {
+  document.getElementById('cause').value = cause;
+  
+  // Update badges
+  document.querySelectorAll('#cause-group .badge').forEach(badge => {
+    badge.classList.toggle('active', badge.textContent.trim() === cause);
+  });
+
+  // Clear previous outcome selection
+  document.getElementById('outcome').value = '';
+
+  goToStep(6);
+}
+
+function selectOutcome(outcome) {
+  document.getElementById('outcome').value = outcome;
+  
+  // Update badges
+  document.querySelectorAll('#outcome-group .badge').forEach(badge => {
+    badge.classList.toggle('active', badge.textContent.trim() === outcome);
+  });
+
+  goToStep(7);
+}
+
+function populateSubcategories() {
+  const category = document.getElementById('category').value;
+  const group = document.getElementById('subcategory-group');
+  const title = document.getElementById('step-4-title');
+  const subtitle = document.getElementById('step-4-subtitle');
+
+  if (!category || !CALL_CATEGORIES[category]) {
+    group.innerHTML = '';
+    title.textContent = 'Step 4';
+    subtitle.textContent = '';
+    return;
+  }
+
+  // Set dynamic title and subtitle
+  title.textContent = SUBCATEGORY_LABELS[category] || 'Select an option';
+  subtitle.textContent = '';
+
+  // Populate badges
+  group.innerHTML = CALL_CATEGORIES[category].map(item => {
+    const safeItem = item.replace(/'/g, "\\'");
+    return `<span class="badge" onclick="selectSubcategory('${safeItem}')">${item}</span>`;
+  }).join('');
+}
+
+function populateCauses() {
+  const subcategory = document.getElementById('subcategory').value;
+  const group = document.getElementById('cause-group');
+  const title = document.getElementById('step-5-title');
+  const subtitle = document.getElementById('step-5-subtitle');
+
+  if (!subcategory || !CAUSE_OPTIONS[subcategory]) {
+    title.textContent = 'No additional details needed';
+    subtitle.textContent = '';
+    group.innerHTML = '';
+    return;
+  }
+
+  // Set dynamic title based on subcategory
+  let titleText = 'What was the cause of the problem?';
+  if (subcategory === 'Appointment changes/cancellation request') {
+    titleText = 'Outcome of call?';
+  }
+  
+  title.textContent = titleText;
+  subtitle.textContent = '';
+
+  // Populate badges
+  group.innerHTML = CAUSE_OPTIONS[subcategory].map(item => 
+    `<span class="badge" onclick="selectCause('${item.replace(/'/g, "\\'")}')">${item}</span>`
+  ).join('');
+}
+
+function populateOutcomes() {
+  const cause = document.getElementById('cause').value;
+  const group = document.getElementById('outcome-group');
+  const title = document.getElementById('step-6-title');
+  const subtitle = document.getElementById('step-6-subtitle');
+
+  if (!cause || !CAUSE_OPTIONS[cause]) {
+    title.textContent = 'No additional details needed';
+    subtitle.textContent = '';
+    group.innerHTML = '';
+    return;
+  }
+
+  // Set dynamic title
+  if (cause === 'Customer closed fault incorrectly') {
+    title.textContent = 'Please select the correct outcome for the closed fault';
+  } else {
+    title.textContent = 'Outcome of call?';
+  }
+  subtitle.textContent = '';
+
+  // Populate badges
+  group.innerHTML = CAUSE_OPTIONS[cause].map(item => 
+    `<span class="badge" onclick="selectOutcome('${item.replace(/'/g, "\\'")}')">${item}</span>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Populate categories
+  const group = document.getElementById('category-group');
+  group.innerHTML = Object.keys(CALL_CATEGORIES).map(category => 
+    `<span class="badge" onclick="selectCategory('${category.replace(/'/g, "\\'")}')">${category}</span>`
+  ).join('');
+
+  // Enter key on service ID
+  document.getElementById('service-id').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      goToStep(2);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// NOTE GENERATION
+// ═══════════════════════════════════════════════════════════════════
+function generateNote() {
+  const serviceId = document.getElementById('service-id').value.trim();
+  const issueType = document.getElementById('issue-type').value;
+  const category = document.getElementById('category').value;
+  const subcategory = document.getElementById('subcategory').value;
+  const cause = document.getElementById('cause').value;
+  const custName = document.getElementById('customer-name').value.trim();
+  const mobile = document.getElementById('mobile-contact').value.trim();
+  const notes = document.getElementById('call-notes').value.trim();
+
+  if (!custName || !mobile) {
+    alert('Please enter customer name and mobile number');
+    return;
+  }
+
+  // Build the output
+  let output = [
+    'CALL NOTE',
+    '',
+    `Service ID: ${serviceId}`,
+    `Issue Type: ${issueType}`,
+    `Category: ${category}`,
+    `Issue: ${subcategory}`
+  ];
+
+  if (cause) {
+    output.push(`Cause/Reason: ${cause}`);
+  }
+
+  output.push(`Customer Name: ${custName}`);
+  output.push(`Mobile Contact: ${mobile}`);
+  output.push('');
+  output.push('NOTES:');
+  output.push(notes || '(No notes entered)');
+
+  // Special handling for 3rd party equipment issue
+  if (subcategory === '3rd party equipment issue') {
+    output.push('');
+    output.push('RESOLUTION:');
+    output.push('Issue with 3rd party equipment - customer advised to reach out to 3rd party provider.');
+    output.push('Issue resolved.');
+  }
+
+  const finalOutput = output.join('\n');
+
+  // Save to localStorage for demo
+  const log = JSON.parse(localStorage.getItem('bt_notes') || '[]');
+  log.push({
+    id: Date.now(),
+    serviceId,
+    output: finalOutput,
+    ts: new Date().toISOString()
+  });
+  localStorage.setItem('bt_notes', JSON.stringify(log));
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(finalOutput).then(() => {
+    alert('Note saved and copied to clipboard!');
+    // Optionally clear form and return to start
+    // location.reload();
+  }).catch(() => {
+    alert('Note saved! (Copy to clipboard failed)');
+  });
+}
+</script>
+
+</body>
+</html>
