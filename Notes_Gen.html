@@ -202,6 +202,88 @@
     transition: background .15s, color .15s;
   }
   .badge-choice.active { background: #5514B4; color: #fff; }
+
+  .misroute-banner {
+    background: var(--bt-purple-light);
+    border: 1.5px dashed var(--bt-purple);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--bt-purple-dark);
+    font-weight: 700;
+    margin-top: 10px;
+  }
+
+  /* Step Wizard UI */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .step-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e8e8e8;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 14px;
+    transition: background .3s, color .3s;
+  }
+  .step-badge.active {
+    background: var(--bt-purple);
+    color: white;
+    box-shadow: 0 0 0 4px rgba(85,20,180,.15);
+  }
+  .step-badge.completed {
+    background: #4ade80;
+    color: white;
+  }
+  .step-connector {
+    width: 24px;
+    height: 2px;
+    background: #e8e8e8;
+  }
+  .step-connector.active {
+    background: var(--bt-purple);
+  }
+
+  .step-section {
+    display: none;
+  }
+  .step-section.visible {
+    display: block;
+    animation: slideIn 0.3s ease-in-out;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 2rem;
+    justify-content: space-between;
+  }
+  .step-controls button {
+    flex: 1;
+  }
+  .step-controls .btn-back {
+    background: white;
+    border: 1.5px solid #cbd5e1;
+    color: var(--text-muted);
+  }
+  .step-controls .btn-back:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -216,7 +298,6 @@
   </div>
   <div class="topbar-right">
     <div id="clock"></div>
-    <!-- Session log counter — click to download all notes -->
     <div class="log-pill" onclick="downloadAllNotes()" title="Download all notes as one .txt file">
       📋 <span id="log-count">0</span> notes
     </div>
@@ -234,14 +315,23 @@
     </select>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════
-       CALL NOTES SECTION
-  ══════════════════════════════════════════════════════════════ -->
   <div id="call-notes-section">
 
-    <!-- Customer & Call Details -->
+    <!-- STEP INDICATOR -->
+    <div class="step-indicator">
+      <div class="step-badge active" id="step-1-badge">1</div>
+      <div class="step-connector" id="connector-1-2"></div>
+      <div class="step-badge" id="step-2-badge">2</div>
+      <div class="step-connector" id="connector-2-3"></div>
+      <div class="step-badge" id="step-3-badge">3</div>
+      <div class="step-connector" id="connector-3-4"></div>
+      <div class="step-badge" id="step-4-badge">4</div>
+    </div>
+
+    <!-- STEP 1: CUSTOMER & VALIDATION -->
+    <div class="step-section visible" id="step-1" data-step="1">
     <div class="card">
-      <div class="card-title">Customer &amp; Call Details</div>
+      <div class="card-title">Step 1: Customer &amp; Validation</div>
 
       <div class="two-col">
         <div class="field">
@@ -252,6 +342,11 @@
           <label>Call Time</label>
           <input type="time" id="call-time">
         </div>
+      </div>
+
+      <div class="field">
+        <label>Agent ID / EIN Taking Call</label>
+        <input type="text" id="agent-id" placeholder="Your EIN / agent ID">
       </div>
 
       <div class="three-col">
@@ -273,18 +368,21 @@
         <div class="field">
           <label>How Was Customer Validated? *</label>
           <div class="badge-select">
-            <!-- FIX: pass 'this' explicitly — was using implicit event.target (fragile) -->
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to phone','validation-method',this)">PIN Phone</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to email','validation-method',this)">PIN Email</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Low validation','validation-method',this)">Low Validation</span>
+            <span class="badge-option" data-group="validation" onclick="selectBadge('validation','No Validation Required','validation-method',this)">No Validation Required</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Skip Validation','validation-method',this)">Skip Validation</span>
+            <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Unable to Validate','validation-method',this)">Unable to Validate</span>
           </div>
           <select id="validation-method" onchange="handleValidationChange()" style="display:none">
             <option value=""></option>
             <option value="High Validated - PIN sent to phone"></option>
             <option value="High Validated - PIN sent to email"></option>
             <option value="Low validation"></option>
+            <option value="No Validation Required"></option>
             <option value="Skip Validation"></option>
+            <option value="Unable to Validate"></option>
           </select>
         </div>
 
@@ -298,14 +396,35 @@
         </div>
       </div>
 
+      <div class="misroute-banner" id="no-validation-note" style="display:none;">
+        No validation required — call relates to a different provider / consumer fault, not a BT Business account action.
+      </div>
+
+      <div class="misroute-banner" id="unable-to-validate-note" style="display:none;">
+        Unable to validate customer. Do not proceed with account-specific actions or fault details — advise customer accordingly and close or escalate per process.
+      </div>
+
+      <div class="field" id="unable-to-validate-reason-container" style="display:none;">
+        <label>Unable To Validate — Reason</label>
+        <div class="badge-select">
+          <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Not a registered contact','unable-to-validate-reason',this)">Not a Registered Contact</span>
+          <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Details not matching','unable-to-validate-reason',this)">Details Not Matching</span>
+        </div>
+        <select id="unable-to-validate-reason" style="display:none">
+          <option value=""></option>
+          <option value="Not a registered contact"></option>
+          <option value="Details not matching"></option>
+        </select>
+      </div>
+
       <div class="two-col" id="employee-ein-container" style="display:none;">
         <div class="field">
-          <label>Previous Employee EIN</label>
+          <label>Previous Employee EIN *</label>
           <input type="text" id="previous-employee-ein" placeholder="EIN of advisor who validated customer">
         </div>
         <div class="field">
-          <label>Validated Previously By</label>
-          <input type="text" id="validated-by" placeholder="Name / EIN of previous advisor">
+          <label>Manager / OUC</label>
+          <input type="text" id="skip-manager-ouc" placeholder="Manager name / OUC">
         </div>
       </div>
 
@@ -318,48 +437,92 @@
         </select>
       </div>
 
-      <div class="field">
-        <label>Call Transferred?</label>
-        <div class="badge-select">
-          <span class="badge-option" data-group="transfer" onclick="selectBadge('transfer','No','call-transferred',this)">No</span>
-          <span class="badge-option" data-group="transfer" onclick="selectBadge('transfer','Yes','call-transferred',this)">Yes</span>
-        </div>
-        <select id="call-transferred" onchange="handleTransferChange()" style="display:none">
-          <option value=""></option>
-          <option value="No"></option>
-          <option value="Yes"></option>
-        </select>
+      <div class="step-controls">
+        <button class="btn-secondary btn-back" onclick="prevStep()" disabled>Back</button>
+        <button class="btn-primary" onclick="nextStep(1)">Next: Call Handling</button>
       </div>
+    </div>
+    </div>
 
-      <div id="transfer-name-container" style="display:none;">
+    <!-- STEP 2: CALL HANDLING -->
+    <div class="step-section" id="step-2" data-step="2">
+    <div class="card">
+      <div class="card-title">Step 2: Call Handling</div>
+
+      <div id="call-handling-group">
         <div class="field">
-          <label>Who Transferred The Call?</label>
-          <input type="text" id="transferred-by" placeholder="Advisor name / EIN">
+          <label>Call Handling</label>
+          <div class="badge-select">
+            <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('No Transfer',this)">No Transfer</span>
+            <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Consultation',this)">Consultation</span>
+            <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Transferring',this)">Transferring</span>
+          </div>
+          <select id="call-handling" onchange="handleCallHandlingChange()" style="display:none">
+            <option value=""></option>
+            <option value="No Transfer"></option>
+            <option value="Consultation"></option>
+            <option value="Transferring"></option>
+          </select>
+        </div>
+
+        <div id="consultation-group" style="display:none;">
+          <div class="field">
+            <label>Consulted With *</label>
+            <input type="text" id="consultation-with" placeholder="Name / EIN of advisor consulted">
+          </div>
+          <div class="field">
+            <label>Consultation Department *</label>
+            <select id="consultation-department" onchange="handleConsultationDepartmentChange()">
+              <option value="">— Select Department —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Consultation Reason *</label>
+            <select id="consultation-reason">
+              <option value="">— Select Reason —</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="transferring-group" style="display:none;">
+          <div class="field">
+            <label>Transfer Department *</label>
+            <select id="transfer-department" onchange="handleTransferDepartmentChange()">
+              <option value="">— Select Department —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Transfer Reason *</label>
+            <select id="transfer-reason">
+              <option value="">— Select Reason —</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div id="emp-details-container" style="display:none;">
-        <div class="card-title" style="margin-top:1rem;">EMP Details</div>
-        <div class="three-col">
-          <div class="field">
-            <label>EIN *</label>
-            <input type="text" id="emp-ein" placeholder="Mandatory">
-          </div>
-          <div class="field">
-            <label>Manager</label>
-            <input type="text" id="emp-manager" placeholder="Manager name">
-          </div>
-          <div class="field">
-            <label>OUC</label>
-            <input type="text" id="emp-ouc" placeholder="OUC">
-          </div>
-        </div>
+      <div class="step-controls">
+        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+        <button class="btn-primary" onclick="nextStep(2)">Next: Details</button>
+      </div>
+    </div>
+    </div>
+
+    <!-- STEP 3: FAULT DETAILS or TRANSFER DETAILS -->
+    <div class="step-section" id="step-3" data-step="3">
+    <div class="card" id="misroute-card" style="display:none;">
+      <div class="card-title">Misrouted Call</div>
+      <div class="field">
+        <label>Transfer To Department</label>
+        <div id="department-badges" class="badge-grid"></div>
+        <input type="hidden" id="misroute-department" value="">
+      </div>
+      <div class="misroute-banner">
+        Misrouted call selected — Fault Details and Troubleshooting are skipped. Pick a department, then generate the note directly from Outcome &amp; Next Steps below.
       </div>
     </div>
 
-    <!-- Fault Details -->
-    <div class="card">
-      <div class="card-title">Fault Details</div>
+    <div class="card" id="fault-details-card">
+      <div class="card-title">Step 3: Fault Details</div>
 
       <div class="field">
         <label>Product</label>
@@ -372,11 +535,11 @@
           <option value="ADSL Broadband"       data-category="broadband">ADSL Broadband</option>
           <option value="EFM / Ethernet"       data-category="broadband">EFM / Ethernet</option>
           <option value="BTnet"                data-category="network">BTnet</option>
-          <option value="PSTN"                 data-category="voice">PSTN</option>
+          <option value="3rd Party Provider"   data-category="thirdparty">3rd Party Provider</option>
           <option value="Featureline"          data-category="voice">Featureline</option>
           <option value="BT One Phone"         data-category="voice">BT One Phone</option>
           <option value="Cloud Voice"          data-category="voice">Cloud Voice</option>
-          <option value="Cloud Voice Express"  data-category="voice">Cloud Voice Express</option>
+          <option value="Cloud Voice Express"  data-category="cv_express">Cloud Voice Express</option>
           <option value="SIP Trunks"           data-category="voice">SIP Trunks</option>
           <option value="ISDN2 / ISDN30"       data-category="voice">ISDN2 / ISDN30</option>
           <option value="Calling Features Addon" data-category="addons">Calling Features Addon</option>
@@ -395,12 +558,6 @@
         </select>
       </div>
 
-      <!--
-        FIX: These elements were ALL missing from the HTML but referenced throughout the JS.
-        fault-extra-container, fault-start-container, fault-start-badges, fault-since,
-        affected-users-container, affected-badges, affected — none existed in the DOM.
-        handleFaultTypeChange() / handleProductChange() were crashing silently.
-      -->
       <div id="fault-extra-container" class="two-col" style="display:none; margin-top:4px;">
         <div id="fault-start-container" class="field" style="display:none;">
           <label>Fault Since</label>
@@ -415,8 +572,7 @@
       </div>
     </div>
 
-    <!-- Troubleshooting -->
-    <div class="card">
+    <div class="card" id="troubleshooting-card" style="display:none;">
       <div class="card-title">Troubleshooting Steps</div>
 
       <div class="field">
@@ -424,11 +580,6 @@
         <div id="guided-flow" class="badge-wrap"></div>
       </div>
 
-      <!--
-        FIX: renderAdditionalActions() targets id="additional-actions" but only
-        id="additional-actions-text" (a textarea) existed — badges never rendered.
-        Added the div target; removed the redundant textarea (addBadge writes to ts-steps).
-      -->
       <div class="field">
         <label>Additional Actions</label>
         <div id="additional-actions" class="badge-wrap"></div>
@@ -438,26 +589,24 @@
         <label>Notes / Steps Taken</label>
         <textarea id="ts-steps" placeholder="Click badges above — or type freely"></textarea>
       </div>
+
+      <div class="step-controls">
+        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+        <button class="btn-primary" onclick="nextStep(3)">Next: Outcome</button>
+      </div>
+    </div>
     </div>
 
-    <!-- Outcome & Next Steps -->
-    <div class="card">
+    <!-- STEP 4: OUTCOME & GENERATION -->
+    <div class="step-section" id="step-4" data-step="4">
+    <div class="card" id="outcome-next-steps-card">
       <div class="card-title">Outcome &amp; Next Steps</div>
 
-      <!-- FIX: ref-no was read in generateNote() but the element never existed → crash -->
       <div class="two-col">
         <div class="field">
           <label>Call Outcome</label>
           <div id="outcome-badges" class="badge-grid"></div>
-          <select id="outcome" style="display:none">
-            <option value="">— Select outcome —</option>
-            <option value="Fault resolved on call — customer confirmed service restored">Resolved on call</option>
-            <option value="Fault raised — Openreach engineer visit booked">OR engineer booked</option>
-            <option value="Fault raised — under investigation, monitoring in progress">Raised — monitoring</option>
-            <option value="Escalated to Level 2 SME for further investigation">Escalated to L2 / SME</option>
-            <option value="No fault found — customer advised to monitor and call back if issue persists">No fault found — advised</option>
-            <option value="Pending action from customer before fault can progress">Pending customer action</option>
-          </select>
+          <select id="outcome" style="display:none"></select>
         </div>
         <div class="field">
           <label>Reference Number</label>
@@ -467,20 +616,13 @@
 
       <div class="two-col">
         <div class="field" id="engineer-date-container" style="display:none;">
-          <label>Engineer Visit Date</label>
+          <label>Engineer Visit Date *</label>
           <input type="date" id="eng-date">
         </div>
         <div class="field">
           <label>Follow-up / Next Action</label>
           <div id="followup-badges" class="badge-grid"></div>
-          <select id="followup" style="display:none">
-            <option value="">— Select follow-up —</option>
-            <option value="Chase Openreach in 24 hours">Chase Openreach in 24 hours</option>
-            <option value="Customer to call back with update">Customer to call back with update</option>
-            <option value="Monitor connection for 48 hours">Monitor connection for 48 hours</option>
-            <option value="Awaiting Level 2 update">Awaiting Level 2 update</option>
-            <option value="No further action required">No further action required</option>
-          </select>
+          <select id="followup" style="display:none"></select>
         </div>
       </div>
 
@@ -492,19 +634,19 @@
       <div class="field">
         <label>Medallia Survey Positioned</label>
         <div id="medallia-badges" class="badge-grid"></div>
-        <select id="medallia" style="display:none">
-          <option value="">— Select —</option>
-          <option value="Yes">Yes</option>
-          <option value="No">No</option>
-          <option value="Not applicable">Not applicable</option>
-        </select>
+        <select id="medallia" style="display:none"></select>
       </div>
     </div>
 
-    <div class="action-row">
-      <button class="btn-primary"   onclick="generateNote()">Generate Note</button>
+      <div class="step-controls">
+        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+        <button class="btn-primary" onclick="generateNote()">Generate Note</button>
+      </div>
+    </div>
+    </div>
+
+    <div class="action-row" style="margin-top:3rem;">
       <button class="btn-secondary" onclick="clearAll()">Clear Form</button>
-      <!-- Session log download — all notes as one .txt -->
       <button class="btn-log"       onclick="downloadAllNotes()">📋 Download All (<span id="log-count2">0</span>)</button>
       <div class="post-btns">
         <button class="btn-copy"     id="copy-btn"     onclick="copyNote()">Copy Note</button>
@@ -520,27 +662,17 @@
       <div id="note-output"></div>
     </div>
 
-  </div><!-- /call-notes-section -->
+  </div>
 
-  <!-- ══════════════════════════════════════════════════════════════
-       COMPLAINT SECTION
-  ══════════════════════════════════════════════════════════════ -->
   <div id="complaint-notes-section" style="display:none;">
     <div class="card">
       <div class="card-title">Complaint Details</div>
 
       <div class="two-col">
         <div class="field">
-          <label>Customer Name / Company</label>
-          <input type="text" id="comp-name">
+          <label>Customer Name / Account No.</label>
+          <input type="text" id="comp-name" placeholder="Customer name (Account No.)">
         </div>
-        <div class="field">
-          <label>Account No. / BTN</label>
-          <input type="text" id="comp-account">
-        </div>
-      </div>
-
-      <div class="two-col">
         <div class="field">
           <label>Complaint Reason</label>
           <select id="comp-reason">
@@ -552,10 +684,11 @@
             <option value="Other">Other</option>
           </select>
         </div>
-        <div class="field">
-          <label>Outcome / Requested Action</label>
-          <input type="text" id="comp-outcome">
-        </div>
+      </div>
+
+      <div class="field">
+        <label>Outcome / Requested Action</label>
+        <input type="text" id="comp-outcome">
       </div>
 
       <div class="field">
@@ -579,9 +712,9 @@
       </div>
       <div id="comp-note-output"></div>
     </div>
-  </div><!-- /complaint-notes-section -->
+  </div>
 
-</div><!-- /page -->
+</div>
 
 <div class="footer">BT Call Notes Generator — offline tool — no data leaves this page</div>
 
@@ -620,8 +753,7 @@ function fmtTime(val) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SESSION LOG  (localStorage — all notes accumulate across reloads)
-// Single .txt file per shift when you hit Download All.
+// SESSION LOG
 // ═══════════════════════════════════════════════════════════════════
 const LOG_KEY = 'bt_notes_log_v2';
 
@@ -650,10 +782,10 @@ function updateLogCounter() {
 function downloadAllNotes() {
   const log = getLog();
   if (!log.length) { alert('No notes saved yet. Generate a note first.'); return; }
-  const sep = '\n' + '═'.repeat(60) + '\n';
+  const sep = '\n' + '='.repeat(60) + '\n';
   const txt = log.map((e, i) => {
     const ts = new Date(e.ts).toLocaleString('en-GB');
-    return `NOTE ${i+1} — ${e.type.toUpperCase()} — ${e.refLabel} — ${ts}\n\n${e.text}`;
+    return `NOTE ${i+1} - ${e.type.toUpperCase()} - ${e.refLabel} - ${ts}\n\n${e.text}`;
   }).join(sep);
   const date = new Date().toISOString().split('T')[0];
   triggerDownload(txt, 'BT_Shift_Notes_' + date + '.txt');
@@ -667,7 +799,6 @@ function clearSessionLog() {
   updateLogCounter();
 }
 
-// Shared download helper — DRY (replaces 3 separate Blob/a patterns)
 function triggerDownload(text, filename) {
   const blob = new Blob([text], { type:'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -679,9 +810,216 @@ function triggerDownload(text, filename) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// TRANSFER DEPARTMENTS & REASONS (Configuration-driven)
+// ═══════════════════════════════════════════════════════════════════
+const TRANSFER_DEPARTMENTS = {
+  'Orders': [
+    'Open Order',
+    'Order Update',
+    'Delayed Order',
+    'Cancellation',
+    'Provisioning Delay',
+    'Tracking',
+    'Activation',
+    'General Order Query'
+  ],
+  'Billing': [
+    'Invoice Query',
+    'Refund',
+    'Credit Request',
+    'Outstanding Balance',
+    'Payment Issue',
+    'Direct Debit',
+    'Billing Explanation'
+  ],
+  'Soft Cease': [
+    'PSTN to Digital',
+    'Migration',
+    'Migration Delay',
+    'Migration Appointment',
+    'Migration Support'
+  ],
+  'Sales': [
+    'Upgrade',
+    'Downgrade',
+    'New Connection',
+    'Additional Line',
+    'Quotation'
+  ],
+  'Consumer': [
+    'Residential Account',
+    'Wrong Department',
+    'Consumer Fault',
+    'Consumer Billing'
+  ],
+  'Faults': [
+    'Broadband Fault',
+    'Voice Fault',
+    'No Service',
+    'Engineer Visit',
+    'Intermittent Fault'
+  ],
+  'Cloud Voice': [
+    'Registration Failure',
+    'One Way Audio',
+    'Inbound Failure',
+    'Outbound Failure'
+  ],
+  'Cloud Voice Express': [
+    'App Issue',
+    'Registration Failure',
+    'Inbound Failure',
+    'Authentication'
+  ],
+  'Provisioning': [
+    'Provisioning Delay',
+    'Activation',
+    'Order Failure',
+    'Service Setup'
+  ],
+  'BTnet': [
+    'Circuit Status',
+    'Latency Issue',
+    'Connectivity',
+    'QoS Configuration'
+  ],
+  'SIP': [
+    'Registration',
+    'Authentication',
+    'Port Blocking',
+    'Trunk Configuration'
+  ],
+  'Addons': [
+    'Hunt Group Setup',
+    'Voicemail Configuration',
+    'Auto Attendant',
+    'Feature Activation'
+  ],
+  'Porting': [
+    'Number Porting',
+    'Port Status',
+    'Porting Delay',
+    'Cutover Preparation'
+  ],
+  'Number Management': [
+    'Number Assignment',
+    'Number Change',
+    'Number Blocking',
+    'CLI Configuration'
+  ],
+  'Business Moves': [
+    'Site Migration',
+    'Service Relocation',
+    'Move Coordination',
+    'Cutover Support'
+  ],
+  'Collections': [
+    'Payment Arrangement',
+    'Account Recovery',
+    'Dispute Resolution',
+    'Payment Plan'
+  ],
+  'Retentions': [
+    'Retention Offer',
+    'Service Upgrade',
+    'Pricing Review',
+    'Churn Prevention'
+  ],
+  'Other': [
+    'General Enquiry',
+    'Account Query',
+    'Service Information',
+    'Other Request'
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// DEPARTMENTS (Misrouted Call fast path)
+// ═══════════════════════════════════════════════════════════════════
+const DEPARTMENTS = Object.keys(TRANSFER_DEPARTMENTS);
+
+function renderDepartmentBadges() {
+  const wrap = document.getElementById('department-badges');
+  if (!wrap) return;
+  const cur = document.getElementById('misroute-department').value;
+  wrap.innerHTML = DEPARTMENTS.map(dept => {
+    const active = cur === dept ? ' active' : '';
+    return `<span class="badge-choice${active}" onclick="selectDepartment('${dept}')">${dept}</span>`;
+  }).join('');
+}
+
+function selectDepartment(dept) {
+  document.getElementById('misroute-department').value = dept;
+  renderDepartmentBadges();
+  setOutcome('Call transferring to a different department', null);
+  renderOutcomeBadges();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CALL HANDLING FLOW (New replacement for old transfer logic)
+// ═══════════════════════════════════════════════════════════════════
+function selectCallHandling(value, el) {
+  document.querySelectorAll('[data-group="call-handling"]').forEach(x => x.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('call-handling').value = value;
+  handleCallHandlingChange();
+}
+
+function handleCallHandlingChange() {
+  const val = document.getElementById('call-handling').value;
+  const consultationGroup = document.getElementById('consultation-group');
+  const transferringGroup = document.getElementById('transferring-group');
+
+  // Reset all fields
+  document.getElementById('consultation-with').value = '';
+  document.getElementById('consultation-department').value = '';
+  document.getElementById('consultation-reason').value = '';
+  document.getElementById('transfer-department').value = '';
+  document.getElementById('transfer-reason').value = '';
+
+  // Show/hide groups
+  consultationGroup.style.display = val === 'Consultation' ? 'block' : 'none';
+  transferringGroup.style.display = val === 'Transferring' ? 'block' : 'none';
+
+  // Populate dropdowns
+  if (val === 'Consultation') {
+    populateTransferDepartments('consultation-department');
+  } else if (val === 'Transferring') {
+    populateTransferDepartments('transfer-department');
+  }
+}
+
+function populateTransferDepartments(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select Department —</option>' +
+    DEPARTMENTS.map(dept => `<option value="${dept}">${dept}</option>`).join('');
+}
+
+function handleConsultationDepartmentChange() {
+  const dept = document.getElementById('consultation-department').value;
+  const reasonSel = document.getElementById('consultation-reason');
+  if (!dept || !TRANSFER_DEPARTMENTS[dept]) {
+    reasonSel.innerHTML = '<option value="">— Select Reason —</option>';
+    return;
+  }
+  reasonSel.innerHTML = '<option value="">— Select Reason —</option>' +
+    TRANSFER_DEPARTMENTS[dept].map(reason => `<option value="${reason}">${reason}</option>`).join('');
+}
+
+function handleTransferDepartmentChange() {
+  const dept = document.getElementById('transfer-department').value;
+  const reasonSel = document.getElementById('transfer-reason');
+  if (!dept || !TRANSFER_DEPARTMENTS[dept]) {
+    reasonSel.innerHTML = '<option value="">— Select Reason —</option>';
+    return;
+  }
+  reasonSel.innerHTML = '<option value="">— Select Reason —</option>' +
+    TRANSFER_DEPARTMENTS[dept].map(reason => `<option value="${reason}">${reason}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // TROUBLESHOOTING FLOWS
-// Enhanced with realistic BT Business fault steps from BT Business
-// support guides (broadband, Cloud Voice, SIP Trunks, addons).
 // ═══════════════════════════════════════════════════════════════════
 const TROUBLESHOOTING_FLOWS = {
   broadband: {
@@ -690,6 +1028,7 @@ const TROUBLESHOOTING_FLOWS = {
       'Verify Account Status',
       'Reboot Hub and ONT',
       'Check Hub LEDs',
+      'Green Light on Router',
       'Test from Master Socket / NTE',
       'Run BQT / Line Test',
       'Raise Openreach Fault'
@@ -712,15 +1051,16 @@ const TROUBLESHOOTING_FLOWS = {
       'Test from Master Socket',
       'Check Microfilters',
       'BQT During Fault Window',
-      'Raise Openreach Fault — Intermittent'
+      'Raise Openreach Fault - Intermittent'
     ],
     'no sync on the line': [
       'Check MSO / Area Outage',
       'Inspect NTE / Master Socket',
       'Check ONT Status (FTTP)',
       'Check DSL Light on Hub',
+      'Green Light on Router',
       'Run BQT / Line Test',
-      'Raise Openreach Fault — No Sync'
+      'Raise Openreach Fault - No Sync'
     ],
     'WiFi issues reported': [
       'Confirm Issue is WiFi Not Broadband',
@@ -743,9 +1083,9 @@ const TROUBLESHOOTING_FLOWS = {
       'Raise Engineering Fault'
     ],
     'one-way audio on calls': [
-      'Confirm Direction — Inbound or Outbound',
+      'Confirm Direction - Inbound or Outbound',
       'Check SIP ALG on Router / Firewall',
-      'Verify RTP Port Range Open (10000–20000 UDP)',
+      'Verify RTP Port Range Open (10000-20000 UDP)',
       'Check NAT / Firewall Rules',
       'Test with Alternative Handset',
       'Run Call Trace',
@@ -785,6 +1125,44 @@ const TROUBLESHOOTING_FLOWS = {
       'Escalate to Voice SME'
     ]
   },
+  cv_express: {
+    'no dial tone on the line': [
+      'Check Line Status in Systems',
+      'Verify Service Active on Account',
+      'Power Cycle Handset',
+      'Test with Different Handset',
+      'Run Automated Line Test',
+      'Check Provisioning in Portal',
+      'Run Inbound Call Test',
+      'Raise Engineering Fault'
+    ],
+    'app issue': [
+      'Confirm App Version Up To Date',
+      'Verify Login Credentials',
+      'Check Mobile Data / WiFi Connectivity',
+      'Log Out and Log Back In',
+      'Reinstall App',
+      'Check Push Notification Permissions',
+      'Escalate to Platform Team'
+    ],
+    'handset failing to register': [
+      'Verify SIP Credentials in Portal',
+      'Confirm IP Connectivity from Device',
+      'Check SIP ALG Disabled',
+      'Verify Firewall Allows Port 5060',
+      'Power Cycle Handset',
+      'Re-enter Credentials Manually',
+      'Escalate to Voice SME'
+    ],
+    'inbound calls not connecting': [
+      'Confirm Number Provisioned',
+      'Check Inbound Routing Rules',
+      'Run Inbound Call Test',
+      'Check Hunt Group / Auto Attendant',
+      'Verify DID Mapping in Portal',
+      'Escalate to Voice SME'
+    ]
+  },
   network: {
     'no service': [
       'Check MSO / Network Status',
@@ -801,6 +1179,13 @@ const TROUBLESHOOTING_FLOWS = {
       'Review QoS Settings',
       'Compare Against SLA Baseline',
       'Escalate to Network Team'
+    ]
+  },
+  thirdparty: {
+    'call relates to a different provider': [
+      'Confirm Service Not On BT Network',
+      'With Other Provider',
+      'Advise Customer to Contact Their Provider'
     ]
   },
   addons: {
@@ -846,25 +1231,26 @@ const TROUBLESHOOTING_FLOWS = {
   }
 };
 
-// Quick-click additional actions bar (always visible, product-independent)
 const ADDITIONAL_ACTIONS = [
   'Router Reboot',
+  'Green Light on Router',
   'BQT / Line Test',
   'Outage / MSO Check',
   'NTE / Master Socket Test',
   'Engineer Visit Raised',
   'Escalate to L2 / SME',
   'Run Call Trace',
-  'Provisioning Audit'
+  'Provisioning Audit',
+  'Misrouted Call',
+  'With Other Provider'
 ];
 
-// Maps badge label → full sentence written into ts-steps
 const NOTE_MAP = {
-  // Broadband
-  'Check MSO / Area Outage':           'Checked for any Major Service Outage (MSO) or exchange event in the area — none confirmed.',
+  'Check MSO / Area Outage':           'Checked for any Major Service Outage (MSO) or exchange event in the area - none confirmed.',
   'Verify Account Status':             'Confirmed account is active with no billing suspension in place.',
   'Reboot Hub and ONT':                'Advised customer to reboot hub and ONT; confirmed service reconnection following reboot.',
   'Check Hub LEDs':                    'Reviewed hub LED status with customer to identify fault indicators.',
+  'Green Light on Router':             'Checked router status light with customer - confirmed solid green, indicating sync is present.',
   'Test from Master Socket / NTE':     'Advised customer to test from the master socket / NTE to rule out internal wiring as a cause.',
   'Run BQT / Line Test':               'Ran BQT / automated line test and reviewed results with customer.',
   'Raise Openreach Fault':             'Raised Openreach fault for engineering investigation.',
@@ -879,18 +1265,17 @@ const NOTE_MAP = {
   'Test Alternative Device':           'Advised testing with an alternative device to rule out a single-device fault.',
   'Check Microfilters':                'Advised customer to check and replace microfilters on all telephone extensions.',
   'BQT During Fault Window':           'Ran BQT / line test during active fault window; results captured for investigation.',
-  'Raise Openreach Fault — Intermittent': 'Raised Openreach fault for intermittent connectivity investigation.',
+  'Raise Openreach Fault - Intermittent': 'Raised Openreach fault for intermittent connectivity investigation.',
   'Inspect NTE / Master Socket':       'Advised customer to inspect the NTE / master socket for damage or loose connections.',
   'Check ONT Status (FTTP)':           'Checked ONT status lights with customer and confirmed current state.',
-  'Check DSL Light on Hub':            'Checked DSL / WAN light on hub with customer — no sync confirmed.',
-  'Raise Openreach Fault — No Sync':   'Raised Openreach fault — no sync on line confirmed.',
+  'Check DSL Light on Hub':            'Checked DSL / WAN light on hub with customer - no sync confirmed.',
+  'Raise Openreach Fault - No Sync':   'Raised Openreach fault - no sync on line confirmed.',
   'Confirm Issue is WiFi Not Broadband':'Confirmed the reported issue is WiFi-specific, not a broadband connectivity fault.',
   'Run Wired Speed Test':              'Ran speed test via wired Ethernet connection to confirm broadband performance.',
   'Check WiFi Signal at Location':     'Discussed WiFi signal strength at the affected location with customer.',
   'Reboot Hub':                        'Advised customer to reboot the hub; confirmed reconnection.',
   'Check for WiFi Interference':       'Discussed potential sources of wireless interference with customer.',
   'Advise Hub Placement / WiFi Disc':  'Advised on optimal hub placement; discussed WiFi disc / extender options if coverage is insufficient.',
-  // Voice
   'Check Line Status in Systems':      'Checked line and service status in internal systems.',
   'Verify Service Active on Account':  'Confirmed service is active and correctly provisioned on the account.',
   'Power Cycle Handset':               'Advised customer to power cycle the handset and base station.',
@@ -899,9 +1284,9 @@ const NOTE_MAP = {
   'Check Provisioning in Portal':      'Checked device provisioning status in the Cloud Voice portal.',
   'Run Inbound Call Test':             'Completed inbound call test to the reported number to confirm routing.',
   'Raise Engineering Fault':           'Raised engineering fault for further investigation.',
-  'Confirm Direction — Inbound or Outbound':'Confirmed with customer whether one-way audio is on inbound, outbound, or both call directions.',
-  'Check SIP ALG on Router / Firewall':'Advised customer to verify SIP ALG is disabled on their router / firewall — SIP ALG is a common cause of one-way audio and registration failures.',
-  'Verify RTP Port Range Open (10000–20000 UDP)':'Confirmed RTP media port range (UDP 10000–20000) is open on customer firewall.',
+  'Confirm Direction - Inbound or Outbound':'Confirmed with customer whether one-way audio is on inbound, outbound, or both call directions.',
+  'Check SIP ALG on Router / Firewall':'Advised customer to verify SIP ALG is disabled on their router / firewall - SIP ALG is a common cause of one-way audio and registration failures.',
+  'Verify RTP Port Range Open (10000-20000 UDP)':'Confirmed RTP media port range (UDP 10000-20000) is open on customer firewall.',
   'Check NAT / Firewall Rules':        'Reviewed NAT traversal and firewall rule configuration with customer.',
   'Run Call Trace':                    'Ran call trace on the Cloud Voice / SIP Trunks platform and captured results.',
   'Escalate to Voice SME':             'Escalated to Voice SME for further investigation.',
@@ -924,8 +1309,14 @@ const NOTE_MAP = {
   'Test to Multiple Numbers':          'Tested outbound calls to multiple external numbers to confirm the fault scope.',
   'Check Outbound Call Barring':       'Checked outbound call barring settings in the portal.',
   'Verify SIP Trunk Channels':         'Checked the number of available SIP trunk channels and concurrent call capacity.',
-  // Network
-  'Check MSO / Network Status':        'Checked for any MSO or network event affecting the circuit — none confirmed.',
+  'Confirm App Version Up To Date':    'Confirmed the BT Cloud Voice Express app is on the latest available version.',
+  'Verify Login Credentials':          'Verified login credentials for the app with the customer.',
+  'Check Mobile Data / WiFi Connectivity':'Checked mobile data / WiFi connectivity on the device running the app.',
+  'Log Out and Log Back In':           'Advised customer to log out and log back into the app to refresh the session.',
+  'Reinstall App':                     'Advised customer to uninstall and reinstall the app.',
+  'Check Push Notification Permissions':'Checked push notification permissions are enabled for the app on the device.',
+  'Escalate to Platform Team':         'Escalated to platform team for investigation - configuration confirmed correct.',
+  'Check MSO / Network Status':        'Checked for any MSO or network event affecting the circuit - none confirmed.',
   'Verify Circuit Status':             'Verified circuit status in internal systems.',
   'Check Router Interface':            'Checked router interface and port status with customer.',
   'Check Physical Connectivity':       'Verified physical connectivity of cables and handoffs at customer site.',
@@ -937,9 +1328,12 @@ const NOTE_MAP = {
   'Review QoS Settings':              'Advised customer to review QoS priority settings on their router.',
   'Compare Against SLA Baseline':      'Compared performance against the SLA baseline for this circuit type.',
   'Escalate to Network Team':          'Escalated to Network Team with test results attached.',
-  // Addons
+  'Confirm Service Not On BT Network': 'Confirmed the reported service is not provided over the BT network.',
+  'With Other Provider':               'Confirmed the service in question is with another provider, not BT.',
+  'Advise Customer to Contact Their Provider':'Advised customer to contact their own provider directly for this issue.',
+  'Misrouted Call':                    'Call identified as misrouted - customer required a different department.',
   'Confirm Addon on Account in Portal':'Confirmed the addon is showing correctly on the account in the portal.',
-  'Check Order Status':               'Checked order status — confirmed whether provisioning is complete or still pending.',
+  'Check Order Status':               'Checked order status - confirmed whether provisioning is complete or still pending.',
   'Run Provisioning Audit':           'Ran provisioning audit in systems to check for configuration errors.',
   'Verify Service ID on Order':       'Verified the service ID is correctly linked to the addon order.',
   'Escalate to Provisioning Team':    'Escalated to provisioning team for further investigation.',
@@ -948,7 +1342,7 @@ const NOTE_MAP = {
   'Test Feature Step-by-Step':        'Tested the feature step-by-step with customer on the call.',
   'Confirm Feature Configuration':    'Confirmed feature configuration is correct in the portal.',
   'Check Time Schedule Conflicts':    'Checked for conflicting time schedule or call forwarding rules in the portal.',
-  'Escalate if Config Correct':       'Escalated for platform investigation — configuration confirmed correct.',
+  'Escalate if Config Correct':       'Escalated for platform investigation - configuration confirmed correct.',
   'Confirm Voicemail Provisioned':    'Confirmed voicemail is provisioned and active on the service.',
   'Test Mailbox Access':              'Tested mailbox access by dialling voicemail and verifying PIN entry.',
   'Check Voicemail Routing in Portal':'Checked voicemail routing, busy/no-answer forwarding settings in portal.',
@@ -965,15 +1359,12 @@ const NOTE_MAP = {
   'Check Business Hours / Time Schedules':'Verified business hours and time schedule configuration in the portal.',
   'Verify Routing Destination Per Key':'Confirmed call routing destinations for each keypress option in the IVR.',
   'Check Audio Prompts Uploaded':     'Confirmed audio prompt files are uploaded and assigned correctly in the portal.',
-  'Escalate to Platform Team':        'Escalated to platform team for investigation — configuration confirmed correct.',
-  // ADDITIONAL_ACTIONS bar
   'Router Reboot':                    'Advised customer to reboot the router / hub.',
   'BQT / Line Test':                  'Ran BQT / automated line test and reviewed results.',
-  'Outage / MSO Check':               'Checked for exchange outage or MSO — none confirmed.',
+  'Outage / MSO Check':               'Checked for exchange outage or MSO - none confirmed.',
   'NTE / Master Socket Test':         'Advised customer to test from the NTE / master socket to rule out internal wiring.',
   'Engineer Visit Raised':            'Raised an Openreach / BT engineer visit for further investigation.',
   'Escalate to L2 / SME':             'Escalated the issue to Level 2 / SME for further investigation.',
-  'Run Call Trace':                   'Ran call trace on the platform and captured results for investigation.',
   'Provisioning Audit':               'Ran provisioning audit to check for any configuration errors on the service.'
 };
 
@@ -983,15 +1374,50 @@ function addBadge(text, badgeEl) {
   const mapped = NOTE_MAP[text] || text;
 
   if (badgeEl && badgeEl.classList.contains('active')) {
-    // ── Deselect: remove the line from ts-steps ───────────────────
     badgeEl.classList.remove('active');
     const lines = tsEl.value.split('\n').filter(l => l.trim() !== mapped.trim());
     tsEl.value = lines.join('\n').trim();
+    if (text === 'Misrouted Call') deactivateMisrouted();
   } else {
-    // ── Select: append the line and highlight the badge ───────────
     if (badgeEl) badgeEl.classList.add('active');
     tsEl.value = tsEl.value.trim() ? tsEl.value.trim() + '\n' + mapped : mapped;
+    if (text === 'Misrouted Call') activateMisrouted();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MISROUTED CALL FAST PATH
+// ═══════════════════════════════════════════════════════════════════
+let misroutedActive = false;
+
+function isMisrouted() {
+  return misroutedActive;
+}
+
+function isUnableToValidate() {
+  return document.getElementById('validation-method').value === 'Unable to Validate';
+}
+
+function refreshFlowVisibility() {
+  const unableToValidate = isUnableToValidate();
+  const hideFaultAndTS = unableToValidate || misroutedActive;
+  document.getElementById('fault-details-card').style.display   = hideFaultAndTS ? 'none' : 'block';
+  document.getElementById('troubleshooting-card').style.display = hideFaultAndTS ? 'none' : 'block';
+  document.getElementById('outcome-next-steps-card').style.display = unableToValidate ? 'none' : 'block';
+  document.getElementById('misroute-card').style.display = (misroutedActive && !unableToValidate) ? 'block' : 'none';
+}
+
+function activateMisrouted() {
+  misroutedActive = true;
+  refreshFlowVisibility();
+  renderDepartmentBadges();
+  document.getElementById('misroute-card').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function deactivateMisrouted() {
+  misroutedActive = false;
+  document.getElementById('misroute-department').value = '';
+  refreshFlowVisibility();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -999,16 +1425,24 @@ function addBadge(text, badgeEl) {
 // ═══════════════════════════════════════════════════════════════════
 function handleValidationChange() {
   const method = document.getElementById('validation-method').value;
+
   document.getElementById('skip-validation-container').style.display =
     method === 'Skip Validation' ? 'flex' : 'none';
+  document.getElementById('no-validation-note').style.display =
+    method === 'No Validation Required' ? 'block' : 'none';
+  document.getElementById('unable-to-validate-note').style.display =
+    method === 'Unable to Validate' ? 'block' : 'none';
+
   if (method !== 'Skip Validation') {
     document.getElementById('skip-validation-reason').value = '';
     document.getElementById('employee-ein-container').style.display = 'none';
     document.getElementById('system-issue-container').style.display = 'none';
     document.getElementById('previous-employee-ein').value = '';
-    document.getElementById('validated-by').value = '';
+    document.getElementById('skip-manager-ouc').value = '';
     document.getElementById('system-issue-type').value = '';
   }
+
+  refreshFlowVisibility();
 }
 
 function handleSkipValidationReason() {
@@ -1019,25 +1453,11 @@ function handleSkipValidationReason() {
     reason === 'System issue' ? 'flex' : 'none';
 }
 
-function handleTransferChange() {
-  const val = document.getElementById('call-transferred').value;
-  const isYes = val === 'Yes';
-  document.getElementById('transfer-name-container').style.display = isYes ? 'block' : 'none';
-  document.getElementById('emp-details-container').style.display = isYes ? 'block' : 'none';
-  if (!isYes) {
-    ['transferred-by','emp-ein','emp-manager','emp-ouc'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-  }
-}
-
-// FIX: selectBadge now receives 'el' explicitly — was using implicit event.target (breaks in some contexts)
 function selectBadge(group, value, targetId, el) {
   document.querySelectorAll('[data-group="' + group + '"]').forEach(x => x.classList.remove('active'));
   if (el) el.classList.add('active');
   document.getElementById(targetId).value = value;
   if (targetId === 'validation-method') handleValidationChange();
-  if (targetId === 'call-transferred') handleTransferChange();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1061,10 +1481,21 @@ const FAULT_TYPES = {
     { value: 'outbound calls failing',           text: 'Outbound Failure' },
     { value: 'other fault',                      text: 'Other' }
   ],
+  cv_express: [
+    { value: 'no dial tone on the line',         text: 'No Dial Tone' },
+    { value: 'app issue',                        text: 'App Issue' },
+    { value: 'handset failing to register',      text: 'Registration Failure' },
+    { value: 'inbound calls not connecting',     text: 'Inbound Failure' },
+    { value: 'other fault',                      text: 'Other' }
+  ],
   network: [
     { value: 'no service',    text: 'No Service' },
     { value: 'high latency',  text: 'High Latency' },
     { value: 'other fault',   text: 'Other' }
+  ],
+  thirdparty: [
+    { value: 'call relates to a different provider', text: 'Different Provider' },
+    { value: 'other fault',                           text: 'Other' }
   ],
   addons: [
     { value: 'provisioning issue',              text: 'Provisioning' },
@@ -1083,11 +1514,11 @@ const PRODUCT_OPTIONS = [
   { value: 'ADSL Broadband',          category: 'broadband', label: 'ADSL' },
   { value: 'EFM / Ethernet',          category: 'broadband', label: 'Ethernet' },
   { value: 'BTnet',                   category: 'network',   label: 'BTnet' },
-  { value: 'PSTN',                    category: 'voice',     label: 'PSTN' },
+  { value: '3rd Party Provider',      category: 'thirdparty',label: '3rd Party Provider' },
   { value: 'Featureline',             category: 'voice',     label: 'Featureline' },
   { value: 'BT One Phone',            category: 'voice',     label: 'One Phone' },
   { value: 'Cloud Voice',             category: 'voice',     label: 'Cloud Voice' },
-  { value: 'Cloud Voice Express',     category: 'voice',     label: 'CV Express' },
+  { value: 'Cloud Voice Express',     category: 'cv_express',label: 'CV Express' },
   { value: 'SIP Trunks',              category: 'voice',     label: 'SIP' },
   { value: 'ISDN2 / ISDN30',          category: 'voice',     label: 'ISDN' },
   { value: 'Calling Features Addon',  category: 'addons',    label: 'Addons' },
@@ -1156,7 +1587,7 @@ function renderFlowBadges() {
   const affVal      = document.getElementById('affected')?.value || '';
 
   if (startWrap) {
-    const opts = ['Today','Yesterday','Last 2–3 days','Last week','More than a week ago','Intermittent / ongoing','N/A'];
+    const opts = ['Today','Yesterday','Last 2-3 days','Last week','More than a week ago','Intermittent / ongoing','N/A'];
     startWrap.innerHTML = opts.map(v => {
       const active = startVal === v ? ' active' : '';
       return `<span class="badge-choice${active}" data-badge-group="start" data-value="${v}"
@@ -1165,7 +1596,7 @@ function renderFlowBadges() {
   }
 
   if (affWrap) {
-    const opts = ['1 user','Multiple users','Whole site','All sites','Intermittent — varies','N/A'];
+    const opts = ['1 user','Multiple users','Whole site','All sites','Intermittent - varies','N/A'];
     affWrap.innerHTML = opts.map(v => {
       const active = affVal === v ? ' active' : '';
       return `<span class="badge-choice${active}" data-badge-group="affected" data-value="${v}"
@@ -1226,7 +1657,6 @@ function handleProductChange() {
   if (affectedEl) affectedEl.value = '';
 }
 
-// FIX: fault-extra-container, fault-start-container, affected-users-container now exist in HTML
 function handleFaultTypeChange() {
   const val        = document.getElementById('fault-type').value;
   const extra      = document.getElementById('fault-extra-container');
@@ -1271,7 +1701,6 @@ function renderGuidedFlow() {
   ).join('');
 }
 
-// FIX: target id="additional-actions" now exists in HTML (was silently targeting nothing)
 function renderAdditionalActions() {
   const wrap = document.getElementById('additional-actions');
   if (!wrap) return;
@@ -1293,12 +1722,17 @@ window.addEventListener('DOMContentLoaded', initFaultDetails);
 // OUTCOME / FOLLOW-UP / MEDALLIA BADGES
 // ═══════════════════════════════════════════════════════════════════
 const OUTCOME_OPTIONS = [
-  { value: 'Fault resolved on call — customer confirmed service restored',          label: 'Resolved on call' },
-  { value: 'Fault raised — Openreach engineer visit booked',                        label: 'OR engineer booked' },
-  { value: 'Fault raised — under investigation, monitoring in progress',             label: 'Raised — monitoring' },
-  { value: 'Escalated to Level 2 SME for further investigation',                    label: 'Escalated to L2 / SME' },
-  { value: 'No fault found — customer advised to monitor and call back if issue persists', label: 'No fault found' },
-  { value: 'Pending action from customer before fault can progress',                label: 'Pending customer action' }
+  { value: 'Fault resolved on call - customer confirmed service restored',           label: 'Resolved on call' },
+  { value: 'Fault raised - Openreach engineer visit booked',                         label: 'OR engineer booked' },
+  { value: 'Faulty router auto-replaced - replacement dispatched, service restored pending delivery', label: 'Router auto-replaced' },
+  { value: 'Fault raised - under investigation, monitoring in progress',             label: 'Raised - monitoring' },
+  { value: 'Escalated to Level 2 SME for further investigation',                     label: 'Escalated to L2 / SME' },
+  { value: 'No fault found - customer advised to monitor and call back if issue persists', label: 'No fault found' },
+  { value: 'Pending action from customer before fault can progress',                 label: 'Pending customer action' },
+  { value: 'Call transferring to a different department',                            label: 'Transferring' },
+  { value: 'Soft cease applied - service suspended, reversible on customer request',  label: 'Soft Cease' },
+  { value: 'Broadband service ceased at customer request',                           label: 'Broadband ceased' },
+  { value: 'Call disconnected before resolution could be confirmed',                 label: 'Call disconnected' }
 ];
 
 const FOLLOWUP_OPTIONS = [
@@ -1306,6 +1740,7 @@ const FOLLOWUP_OPTIONS = [
   { value: 'Customer to call back with update', label: 'Customer to call back with update' },
   { value: 'Monitor connection for 48 hours',   label: 'Monitor connection for 48 hours' },
   { value: 'Awaiting Level 2 update',           label: 'Awaiting Level 2 update' },
+  { value: 'Call transferring to a different department', label: 'Transferring' },
   { value: 'No further action required',        label: 'No further action required' }
 ];
 
@@ -1314,6 +1749,13 @@ const MEDALLIA_OPTIONS = [
   { value: 'No',             label: 'No' },
   { value: 'Not applicable', label: 'Not applicable' }
 ];
+
+function populateSelectFromOptions(selectId, options) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select —</option>' +
+    options.map(o => `<option value="${o.value.replace(/"/g,'&quot;')}">${o.label}</option>`).join('');
+}
 
 function renderOutcomeBadges() {
   const wrap = document.getElementById('outcome-badges');
@@ -1325,7 +1767,6 @@ function renderOutcomeBadges() {
   }).join('');
 }
 
-// FIX: engineer-date show/hide logic integrated directly — removed fragile monkey-patch at EOF
 function setOutcome(value, el) {
   const sel = document.getElementById('outcome');
   if (!sel) return;
@@ -1377,6 +1818,9 @@ function setMedallia(value, el) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  populateSelectFromOptions('outcome', OUTCOME_OPTIONS);
+  populateSelectFromOptions('followup', FOLLOWUP_OPTIONS);
+  populateSelectFromOptions('medallia', MEDALLIA_OPTIONS);
   renderOutcomeBadges();
   renderFollowupBadges();
   renderMedalliaBadges();
@@ -1395,38 +1839,58 @@ function formatTS(raw) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// NOTE BUILDER
+// ═══════════════════════════════════════════════════════════════════
+function buildNoteSections(sections) {
+  return sections
+    .filter(s => s.lines && s.lines.length)
+    .map(s => s.heading + '\n' + s.lines.join('\n'))
+    .join('\n\n');
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // GENERATE CALL NOTE
-// FIX: since / affected were undeclared (ReferenceError in generateNote);
-//      ref-no element didn't exist (null.value crash);
-//      fault details section never included since/affected in output.
 // ═══════════════════════════════════════════════════════════════════
 function generateNote() {
   const serviceId     = document.getElementById('service-id').value.trim();
   const mandatoryName = document.getElementById('mandatory-cust-name').value.trim();
   const mobile        = document.getElementById('mobile-contact').value.trim();
   const validation    = document.getElementById('validation-method').value;
-  const transferred   = document.getElementById('call-transferred').value;
-  const empEin        = transferred === 'Yes' ? document.getElementById('emp-ein').value.trim() : '';
+  const callHandling  = document.getElementById('call-handling').value;
 
   if (!serviceId || !mandatoryName || !mobile || !validation) {
     alert('Please complete mandatory fields: Service ID, Customer Name, Mobile Contact Number and Validation Method.');
     return;
   }
-  if (transferred === 'Yes' && !empEin) {
-    alert('Please enter EIN in EMP Details.');
-    return;
+
+  // Validate call handling fields
+  if (callHandling === 'Consultation') {
+    const consultWith = document.getElementById('consultation-with').value.trim();
+    const consultDept = document.getElementById('consultation-department').value;
+    const consultReason = document.getElementById('consultation-reason').value;
+    if (!consultWith || !consultDept || !consultReason) {
+      alert('Please complete Consultation fields: Consulted With, Department, and Reason.');
+      return;
+    }
+  } else if (callHandling === 'Transferring') {
+    const transferDept = document.getElementById('transfer-department').value;
+    const transferReason = document.getElementById('transfer-reason').value;
+    if (!transferDept || !transferReason) {
+      alert('Please complete Transfer fields: Department and Reason.');
+      return;
+    }
   }
 
   const skipReason  = document.getElementById('skip-validation-reason').value;
   const prevEin     = document.getElementById('previous-employee-ein').value.trim();
-  const validatedBy = document.getElementById('validated-by').value.trim();
+  const skipMgrOuc  = document.getElementById('skip-manager-ouc').value.trim();
   const systemIssue = document.getElementById('system-issue-type').value;
 
   if (validation === 'Skip Validation' && !skipReason) {
     alert('Please select Skip Validation Reason.'); return;
   }
-  if (skipReason === 'Employee EIN' && (!prevEin || !validatedBy)) {
-    alert('Please enter Previous Employee EIN and who validated the customer previously.'); return;
+  if (skipReason === 'Employee EIN' && !prevEin) {
+    alert('Please enter Previous Employee EIN.'); return;
   }
   if (skipReason === 'System issue' && !systemIssue) {
     alert('Please select the system issue type.'); return;
@@ -1434,90 +1898,113 @@ function generateNote() {
 
   const date    = document.getElementById('call-date').value;
   const time    = document.getElementById('call-time').value;
-  const product = document.getElementById('product').value;
-  const fault   = document.getElementById('fault-type').value;
-
-  // FIX: these were undeclared variables — ReferenceError crash
-  const since    = document.getElementById('fault-since')?.value   || '';
-  const affected = document.getElementById('affected')?.value      || '';
-
-  const ts      = document.getElementById('ts-steps').value.trim();
   const outcome = document.getElementById('outcome').value;
-
-  // FIX: ref-no element didn't exist — null.value crash
   const ref     = document.getElementById('ref-no')?.value.trim()  || '';
-
   const engDate = document.getElementById('eng-date').value;
   const followup= document.getElementById('followup').value;
   const extra   = document.getElementById('extra').value.trim();
   const medallia= document.getElementById('medallia').value;
-  const transferredBy = transferred === 'Yes' ? document.getElementById('transferred-by').value.trim() : '';
-  const manager       = transferred === 'Yes' ? document.getElementById('emp-manager').value.trim() : '';
-  const ouc           = transferred === 'Yes' ? document.getElementById('emp-ouc').value.trim() : '';
 
-  let note = 'CALL NOTE\n\n';
+  const unableToValidate = isUnableToValidate();
 
-  if (date || time) {
-    note += 'Call taken';
-    if (date) note += ' on ' + fmtDate(date);
-    if (time) note += ' at ' + fmtTime(time);
-    note += '.\n\n';
+  if (!unableToValidate && outcome.includes('engineer visit booked') && !engDate) {
+    alert('Please enter the Engineer Visit Date - it is mandatory for this outcome.');
+    return;
   }
 
-  if (mandatoryName) note += 'Customer: ' + mandatoryName + '.\n\n';
+  const misrouted  = !unableToValidate && isMisrouted();
+  const department = document.getElementById('misroute-department').value;
 
-  note += 'MANDATORY DETAILS\n';
-  note += 'Service ID: ' + serviceId + '\n';
-  note += 'Customer Name: ' + mandatoryName + '\n';
-  note += 'Mobile Contact Number: ' + mobile + '\n';
-  note += 'How Was Customer Validated: ' + validation + '\n';
+  if (misrouted && !department) {
+    alert('Please select a department to transfer this misrouted call to.');
+    return;
+  }
 
+  const sections = [];
+
+  const callLine = [];
+  if (date) callLine.push('on ' + fmtDate(date));
+  if (time) callLine.push('at ' + fmtTime(time));
+  sections.push({
+    heading: 'CALL NOTE',
+    lines: [(callLine.length ? 'Call taken ' + callLine.join(' ') + '.' : '')].filter(Boolean)
+  });
+
+  const mandatoryLines = [
+    'Customer Name: ' + mandatoryName,
+    'Service ID: ' + serviceId,
+    'Mobile Contact Number: ' + mobile,
+    'How Was Customer Validated: ' + validation
+  ];
   if (validation === 'Skip Validation') {
-    note += 'Skip Validation Reason: ' + skipReason + '\n';
+    mandatoryLines.push('Skip Validation Reason: ' + skipReason);
     if (skipReason === 'Employee EIN') {
-      note += 'Previous Employee EIN: ' + prevEin + '\n';
-      note += 'Customer Previously Validated By: ' + validatedBy + '\n';
+      mandatoryLines.push('Previous Employee EIN: ' + prevEin);
+      if (skipMgrOuc) mandatoryLines.push('Manager / OUC: ' + skipMgrOuc);
     }
     if (skipReason === 'System issue') {
-      note += 'System Issue Type: ' + systemIssue + '\n';
+      mandatoryLines.push('System Issue Type: ' + systemIssue);
     }
   }
+  
+  if (callHandling === 'Consultation') {
+    const consultWith = document.getElementById('consultation-with').value.trim();
+    const consultDept = document.getElementById('consultation-department').value;
+    const consultReason = document.getElementById('consultation-reason').value;
+    mandatoryLines.push('Call Handling: Consultation');
+    mandatoryLines.push('Consulted With: ' + consultWith);
+    mandatoryLines.push('Consultation Department: ' + consultDept);
+    mandatoryLines.push('Consultation Reason: ' + consultReason);
+  } else if (callHandling === 'Transferring') {
+    const transferDept = document.getElementById('transfer-department').value;
+    const transferReason = document.getElementById('transfer-reason').value;
+    mandatoryLines.push('Call Handling: Transferring');
+    mandatoryLines.push('Transfer Department: ' + transferDept);
+    mandatoryLines.push('Transfer Reason: ' + transferReason);
+  }
+  
+  sections.push({ heading: 'MANDATORY DETAILS', lines: mandatoryLines });
 
-  if (transferred) note += 'Call Transferred: ' + transferred + '\n';
-  if (transferredBy) note += 'Transferred By: ' + transferredBy + '\n';
+  if (unableToValidate) {
+    sections.push({
+      heading: 'VALIDATION OUTCOME',
+      lines: ['Unable to validate customer identity - no account-specific actions or fault details progressed. Call closed / escalated per process.']
+    });
+  } else if (misrouted) {
+    sections.push({
+      heading: 'MISROUTED CALL',
+      lines: ['Transferred To Department: ' + department]
+    });
+  } else {
+    const product = document.getElementById('product').value;
+    const fault   = document.getElementById('fault-type').value;
+    const since    = document.getElementById('fault-since')?.value   || '';
+    const affected = document.getElementById('affected')?.value      || '';
 
-  if (transferred === 'Yes') {
-    note += '\nEMP DETAILS\n';
-    note += 'EIN: ' + empEin + '\n';
-    if (manager) note += 'Manager: ' + manager + '\n';
-    if (ouc)     note += 'OUC: ' + ouc + '\n';
+    const faultLines = [];
+    if (product)  faultLines.push('Product: ' + product);
+    if (fault)    faultLines.push('Fault Type: ' + fault);
+    if (since)    faultLines.push('Fault Start: ' + since);
+    if (affected) faultLines.push('Users Affected: ' + affected);
+    sections.push({ heading: 'FAULT DETAILS', lines: faultLines });
+
+    const ts = document.getElementById('ts-steps').value.trim();
+    sections.push({ heading: 'TROUBLESHOOTING', lines: ts ? [formatTS(ts)] : [] });
   }
 
-  // FIX: since and affected now declared and included in output
-  if (product || fault || since || affected) {
-    note += '\nFAULT DETAILS\n';
-    if (product)  note += 'Product: ' + product + '\n';
-    if (fault)    note += 'Fault Type: ' + fault + '\n';
-    if (since)    note += 'Fault Start: ' + since + '\n';
-    if (affected) note += 'Users Affected: ' + affected + '\n';
+  if (!unableToValidate) {
+    const outcomeLines = [];
+    if (outcome)  outcomeLines.push('Outcome: ' + outcome);
+    if (ref)      outcomeLines.push('Reference: ' + ref);
+    if (engDate)  outcomeLines.push('Engineer Visit Date: ' + fmtDate(engDate));
+    if (followup) outcomeLines.push('Follow-up: ' + followup);
+    if (extra)    outcomeLines.push('Additional Context: ' + extra);
+    if (medallia) outcomeLines.push('Medallia Survey Positioned: ' + medallia);
+    sections.push({ heading: 'OUTCOME / NEXT STEPS', lines: outcomeLines });
   }
 
-  if (ts) {
-    note += '\nTROUBLESHOOTING\n';
-    note += formatTS(ts) + '\n';
-  }
+  const finalNote = buildNoteSections(sections);
 
-  if (outcome || ref || engDate || followup || extra) {
-    note += '\nOUTCOME / NEXT STEPS\n';
-    if (outcome)  note += 'Outcome: ' + outcome + '\n';
-    if (ref)      note += 'Reference: ' + ref + '\n';
-    if (engDate)  note += 'Engineer Visit Date: ' + fmtDate(engDate) + '\n';
-    if (followup) note += 'Follow-up: ' + followup + '\n';
-    if (extra)    note += 'Additional Context: ' + extra + '\n';
-    if (medallia) note += 'Medallia Survey Positioned: ' + medallia + '\n';
-  }
-
-  const finalNote = note.trim();
   document.getElementById('note-output').textContent = finalNote;
   document.getElementById('note-meta').textContent =
     [date ? fmtDate(date) : '', time ? fmtTime(time) : ''].filter(Boolean).join(' · ');
@@ -1527,7 +2014,6 @@ function generateNote() {
   document.getElementById('download-btn').classList.add('visible');
   document.getElementById('output-card').scrollIntoView({ behavior:'smooth', block:'start' });
 
-  // Save to session log — accumulates all notes for "Download All" export
   saveNoteToLog('call', serviceId, finalNote);
 }
 
@@ -1561,8 +2047,7 @@ function toggleFormType() {
 // COMPLAINT
 // ═══════════════════════════════════════════════════════════════════
 function generateComplaintNote() {
-  const name    = document.getElementById('comp-name').value.trim();
-  const acc     = document.getElementById('comp-account').value.trim();
+  const nameAcc = document.getElementById('comp-name').value.trim();
   const reason  = document.getElementById('comp-reason').value;
   const outcome = document.getElementById('comp-outcome').value.trim();
   const details = document.getElementById('comp-details').value.trim();
@@ -1571,23 +2056,21 @@ function generateComplaintNote() {
     alert('Please complete complaint reason or details.'); return;
   }
 
-  let note = 'COMPLAINT LOGGED\n\n';
-  if (name || acc) {
-    note += 'Customer: ' + name;
-    if (acc) note += ' (Account: ' + acc + ')';
-    note += '\n\n';
-  }
-  if (reason)  note += 'Reason: ' + reason + '\n';
-  if (details) note += 'Details: ' + details + '\n';
-  if (outcome) note += '\nRequested Action / Outcome: ' + outcome;
+  const sections = [];
+  sections.push({ heading: 'COMPLAINT LOGGED', lines: nameAcc ? ['Customer: ' + nameAcc] : [] });
+  const detailLines = [];
+  if (reason)  detailLines.push('Reason: ' + reason);
+  if (details) detailLines.push('Details: ' + details);
+  sections.push({ heading: 'DETAILS', lines: detailLines });
+  sections.push({ heading: 'OUTCOME', lines: outcome ? ['Requested Action / Outcome: ' + outcome] : [] });
 
-  const finalNote = note.trim();
+  const finalNote = buildNoteSections(sections);
   document.getElementById('comp-note-output').textContent = finalNote;
   document.getElementById('comp-output-card').classList.add('visible');
   document.getElementById('comp-copy-btn').classList.add('visible');
   document.getElementById('comp-download-btn').classList.add('visible');
 
-  saveNoteToLog('complaint', acc || name || 'Complaint', finalNote);
+  saveNoteToLog('complaint', nameAcc || 'Complaint', finalNote);
 }
 
 function copyComplaint() {
@@ -1600,20 +2083,178 @@ function copyComplaint() {
 
 function downloadComplaint() {
   const text = document.getElementById('comp-note-output').textContent;
-  const acc  = document.getElementById('comp-account').value.trim().replace(/[^a-z0-9_-]/gi,'_') || 'Complaint';
+  const acc  = document.getElementById('comp-name').value.trim().replace(/[^a-z0-9_-]/gi,'_') || 'Complaint';
   const date = new Date().toISOString().split('T')[0];
   triggerDownload(text, acc + '_Complaint_' + date + '.txt');
 }
 
 function clearComplaint() {
   if (!confirm('Clear complaint fields?')) return;
-  ['comp-name','comp-account','comp-reason','comp-outcome','comp-details'].forEach(id => {
+  ['comp-name','comp-reason','comp-outcome','comp-details'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('comp-output-card').classList.remove('visible');
   document.getElementById('comp-copy-btn').classList.remove('visible');
   document.getElementById('comp-download-btn').classList.remove('visible');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// STEP-BY-STEP WIZARD NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+let currentStep = 1;
+
+function goToStep(step) {
+  if (step < 1 || step > 4) return;
+  
+  // Hide all steps
+  document.querySelectorAll('.step-section').forEach(s => s.classList.remove('visible'));
+  
+  // Show target step
+  const targetStep = document.getElementById(`step-${step}`);
+  if (targetStep) {
+    targetStep.classList.add('visible');
+    targetStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  
+  // Update step indicator
+  updateStepIndicator(step);
+  
+  currentStep = step;
+  
+  // Update button states
+  document.querySelectorAll('.btn-back').forEach(btn => {
+    btn.disabled = step === 1;
+  });
+}
+
+function updateStepIndicator(activeStep) {
+  for (let i = 1; i <= 4; i++) {
+    const badge = document.getElementById(`step-${i}-badge`);
+    const connector = document.getElementById(`connector-${i}-${i+1}`);
+    
+    if (badge) {
+      badge.classList.remove('active', 'completed');
+      if (i === activeStep) {
+        badge.classList.add('active');
+      } else if (i < activeStep) {
+        badge.classList.add('completed');
+      }
+    }
+    
+    if (connector && i < 4) {
+      connector.classList.remove('active');
+      if (i < activeStep) {
+        connector.classList.add('active');
+      }
+    }
+  }
+}
+
+function validateStep(step) {
+  if (step === 1) {
+    const serviceId = document.getElementById('service-id').value.trim();
+    const mandatoryName = document.getElementById('mandatory-cust-name').value.trim();
+    const mobile = document.getElementById('mobile-contact').value.trim();
+    const validation = document.getElementById('validation-method').value;
+
+    if (!serviceId || !mandatoryName || !mobile || !validation) {
+      alert('Please complete all mandatory fields in Step 1:\n• Service ID\n• Customer Name\n• Mobile Contact Number\n• Validation Method');
+      return false;
+    }
+
+    // Check Skip Validation fields if applicable
+    if (validation === 'Skip Validation') {
+      const skipReason = document.getElementById('skip-validation-reason').value;
+      if (!skipReason) {
+        alert('Please select Skip Validation Reason');
+        return false;
+      }
+      if (skipReason === 'Employee EIN') {
+        const prevEin = document.getElementById('previous-employee-ein').value.trim();
+        if (!prevEin) {
+          alert('Please enter Previous Employee EIN');
+          return false;
+        }
+      }
+      if (skipReason === 'System issue') {
+        const systemIssue = document.getElementById('system-issue-type').value;
+        if (!systemIssue) {
+          alert('Please select System Issue Type');
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  if (step === 2) {
+    const callHandling = document.getElementById('call-handling').value;
+    if (!callHandling) {
+      alert('Please select a Call Handling option');
+      return false;
+    }
+
+    if (callHandling === 'Consultation') {
+      const consultWith = document.getElementById('consultation-with').value.trim();
+      const consultDept = document.getElementById('consultation-department').value;
+      const consultReason = document.getElementById('consultation-reason').value;
+      if (!consultWith || !consultDept || !consultReason) {
+        alert('Please complete all Consultation fields');
+        return false;
+      }
+    } else if (callHandling === 'Transferring') {
+      const transferDept = document.getElementById('transfer-department').value;
+      const transferReason = document.getElementById('transfer-reason').value;
+      if (!transferDept || !transferReason) {
+        alert('Please complete all Transfer fields');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (step === 3) {
+    const callHandling = document.getElementById('call-handling').value;
+    
+    // If Consultation or Transferring, skip fault details validation
+    if (callHandling === 'Consultation' || callHandling === 'Transferring') {
+      return true;
+    }
+
+    // If Unable to Validate, skip fault details validation
+    if (isUnableToValidate()) {
+      return true;
+    }
+
+    // If normal flow with No Transfer, validate fault details
+    if (callHandling === 'No Transfer') {
+      const product = document.getElementById('product').value;
+      if (!product) {
+        alert('Please select a Product');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return true;
+}
+
+function nextStep(fromStep) {
+  if (!validateStep(fromStep)) return;
+  goToStep(fromStep + 1);
+}
+
+function prevStep() {
+  if (currentStep > 1) {
+    goToStep(currentStep - 1);
+  }
+}
+
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', () => {
+  goToStep(1);
+}, { once: true });
 </script>
 </body>
 </html>
