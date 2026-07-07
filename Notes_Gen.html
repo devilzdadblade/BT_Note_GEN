@@ -271,6 +271,17 @@
     gap: 12px;
     margin-top: 2rem;
     justify-content: space-between;
+    background: var(--surface);
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0,0,0,.08);
+  }
+  .step-section#step-3 .step-controls,
+  .step-section#step-4 .step-controls {
+    position: static;
+    bottom: auto;
+    z-index: auto;
+    flex-direction: row;
+    align-items: center;
   }
   .step-controls button {
     flex: 1;
@@ -519,6 +530,10 @@
       <div class="misroute-banner">
         Misrouted call selected — Fault Details and Troubleshooting are skipped. Pick a department, then generate the note directly from Outcome &amp; Next Steps below.
       </div>
+      <div class="step-controls">
+        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+        <button class="btn-primary" onclick="nextStep(3)">Next: Outcome</button>
+      </div>
     </div>
 
     <div class="card" id="fault-details-card">
@@ -589,11 +604,11 @@
         <label>Notes / Steps Taken</label>
         <textarea id="ts-steps" placeholder="Click badges above — or type freely"></textarea>
       </div>
-    </div>
 
-    <div class="step-controls">
-      <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
-      <button class="btn-primary" onclick="nextStep(3)">Next: Outcome</button>
+      <div class="step-controls">
+        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+        <button class="btn-primary" onclick="nextStep(3)">Next: Outcome</button>
+      </div>
     </div>
     </div>
 
@@ -636,7 +651,6 @@
         <div id="medallia-badges" class="badge-grid"></div>
         <select id="medallia" style="display:none"></select>
       </div>
-    </div>
 
       <div class="step-controls">
         <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
