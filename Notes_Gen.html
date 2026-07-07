@@ -382,7 +382,6 @@
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to phone','validation-method',this)">PIN Phone</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to email','validation-method',this)">PIN Email</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Low validation','validation-method',this)">Low Validation</span>
-            <span class="badge-option" data-group="validation" onclick="selectBadge('validation','No Validation Required','validation-method',this)">No Validation Required</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Skip Validation','validation-method',this)">Skip Validation</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Unable to Validate','validation-method',this)">Unable to Validate</span>
           </div>
@@ -391,7 +390,6 @@
             <option value="High Validated - PIN sent to phone"></option>
             <option value="High Validated - PIN sent to email"></option>
             <option value="Low validation"></option>
-            <option value="No Validation Required"></option>
             <option value="Skip Validation"></option>
             <option value="Unable to Validate"></option>
           </select>
@@ -407,12 +405,9 @@
         </div>
       </div>
 
-      <div class="misroute-banner" id="no-validation-note" style="display:none;">
-        No validation required — call relates to a different provider / consumer fault, not a BT Business account action.
-      </div>
-
-      <div class="misroute-banner" id="unable-to-validate-note" style="display:none;">
-        Unable to validate customer. Do not proceed with account-specific actions or fault details — advise customer accordingly and close or escalate per process.
+      <div class="field" id="low-validation-reason-container" style="display:none;">
+        <label>Low Validation Reason *</label>
+        <textarea id="low-validation-reason" placeholder="Enter reason for low validation"></textarea>
       </div>
 
       <div class="field" id="unable-to-validate-reason-container" style="display:none;">
@@ -420,11 +415,13 @@
         <div class="badge-select">
           <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Not a registered contact','unable-to-validate-reason',this)">Not a Registered Contact</span>
           <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Details not matching','unable-to-validate-reason',this)">Details Not Matching</span>
+          <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Customer is with 3rd Party Provider','unable-to-validate-reason',this)">Customer is with 3rd Party Provider</span>
         </div>
         <select id="unable-to-validate-reason" style="display:none">
           <option value=""></option>
           <option value="Not a registered contact"></option>
           <option value="Details not matching"></option>
+          <option value="Customer is with 3rd Party Provider"></option>
         </select>
       </div>
 
@@ -450,7 +447,7 @@
 
       <div class="step-controls">
         <button class="btn-secondary btn-back" onclick="prevStep()" disabled>Back</button>
-        <button class="btn-primary" onclick="nextStep(1)">Next: Call Handling</button>
+        <button id="step1-next-btn" class="btn-primary" onclick="nextOrGenerate(1)">Next: Call Handling</button>
       </div>
     </div>
     </div>
@@ -530,10 +527,6 @@
       <div class="misroute-banner">
         Misrouted call selected — Fault Details and Troubleshooting are skipped. Pick a department, then generate the note directly from Outcome &amp; Next Steps below.
       </div>
-      <div class="step-controls">
-        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
-        <button class="btn-primary" onclick="nextStep(3)">Next: Outcome</button>
-      </div>
     </div>
 
     <div class="card" id="fault-details-card">
@@ -604,11 +597,11 @@
         <label>Notes / Steps Taken</label>
         <textarea id="ts-steps" placeholder="Click badges above — or type freely"></textarea>
       </div>
+    </div>
 
-      <div class="step-controls">
-        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
-        <button class="btn-primary" onclick="nextStep(3)">Next: Outcome</button>
-      </div>
+    <div class="step-controls" id="step-3-controls">
+      <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+      <button id="step3-next-btn" class="btn-primary" onclick="nextOrGenerate(3)">Next: Outcome</button>
     </div>
     </div>
 
@@ -646,16 +639,22 @@
         <textarea id="extra" placeholder="Any extra context"></textarea>
       </div>
 
+      <div class="field" id="unable-transfer-context-container" style="display:none;">
+        <label>Unable to transfer details</label>
+        <textarea id="unable-transfer-context" placeholder="Describe what was done and why transfer could not be completed"></textarea>
+      </div>
+
       <div class="field">
         <label>Medallia Survey Positioned</label>
         <div id="medallia-badges" class="badge-grid"></div>
         <select id="medallia" style="display:none"></select>
       </div>
 
-      <div class="step-controls">
-        <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
-        <button class="btn-primary" onclick="generateNote()">Generate Note</button>
-      </div>
+    </div>
+
+    <div class="step-controls" id="step-4-controls">
+      <button class="btn-secondary btn-back" onclick="prevStep()">Back</button>
+      <button class="btn-primary" onclick="generateNote()">Generate Note</button>
     </div>
     </div>
 
@@ -1421,6 +1420,20 @@ function refreshFlowVisibility() {
   document.getElementById('misroute-card').style.display = (misroutedActive && !unableToValidate) ? 'block' : 'none';
 }
 
+function isUnableToValidateReasonSelected() {
+  return isUnableToValidate() && !!document.getElementById('unable-to-validate-reason')?.value;
+}
+
+function updateStep3NextButtonLabel() {
+  const method = document.getElementById('validation-method').value;
+  const step3NextBtn = document.getElementById('step3-next-btn');
+  if (!step3NextBtn) return;
+  step3NextBtn.textContent =
+    method === 'Unable to Validate' && isUnableToValidateReasonSelected()
+      ? 'Generate Note'
+      : 'Next: Outcome';
+}
+
 function activateMisrouted() {
   misroutedActive = true;
   refreshFlowVisibility();
@@ -1442,9 +1455,9 @@ function handleValidationChange() {
 
   document.getElementById('skip-validation-container').style.display =
     method === 'Skip Validation' ? 'flex' : 'none';
-  document.getElementById('no-validation-note').style.display =
-    method === 'No Validation Required' ? 'block' : 'none';
-  document.getElementById('unable-to-validate-note').style.display =
+  document.getElementById('low-validation-reason-container').style.display =
+    method === 'Low validation' ? 'block' : 'none';
+  document.getElementById('unable-to-validate-reason-container').style.display =
     method === 'Unable to Validate' ? 'block' : 'none';
 
   if (method !== 'Skip Validation') {
@@ -1456,7 +1469,33 @@ function handleValidationChange() {
     document.getElementById('system-issue-type').value = '';
   }
 
+  if (method !== 'Unable to Validate') {
+    document.getElementById('unable-to-validate-reason').value = '';
+  }
+  if (method !== 'Low validation') {
+    document.getElementById('low-validation-reason').value = '';
+  }
+
+  const step1NextBtn = document.getElementById('step1-next-btn');
+  if (step1NextBtn) {
+    step1NextBtn.textContent = method === 'Unable to Validate' ? 'Generate Note' : 'Next: Call Handling';
+  }
+  updateStep3NextButtonLabel();
+
   refreshFlowVisibility();
+}
+
+function nextOrGenerate(fromStep) {
+  if (!validateStep(fromStep)) return;
+  if (fromStep === 3 && isUnableToValidate()) {
+    if (isUnableToValidateReasonSelected()) {
+      generateNote();
+    } else {
+      alert('Please select an Unable to Validate reason before generating the note.');
+    }
+  } else {
+    goToStep(fromStep + 1);
+  }
 }
 
 function handleSkipValidationReason() {
@@ -1744,6 +1783,10 @@ const OUTCOME_OPTIONS = [
   { value: 'No fault found - customer advised to monitor and call back if issue persists', label: 'No fault found' },
   { value: 'Pending action from customer before fault can progress',                 label: 'Pending customer action' },
   { value: 'Call transferring to a different department',                            label: 'Transferring' },
+  { value: 'Assisted transfer successful',                                            label: 'Assisted transfer successful' },
+  { value: 'Warn transfer successful',                                                label: 'Warn transfer successful' },
+  { value: 'Unable to transfer',                                                      label: 'Unable to transfer' },
+  { value: 'Out of hours',                                                           label: 'Out of hours' },
   { value: 'Soft cease applied - service suspended, reversible on customer request',  label: 'Soft Cease' },
   { value: 'Broadband service ceased at customer request',                           label: 'Broadband ceased' },
   { value: 'Call disconnected before resolution could be confirmed',                 label: 'Call disconnected' }
@@ -1793,6 +1836,12 @@ function setOutcome(value, el) {
     c.style.display = show ? 'flex' : 'none';
     if (!show) { const d = document.getElementById('eng-date'); if (d) d.value = ''; }
   }
+
+  const unableContext = document.getElementById('unable-transfer-context-container');
+  const unableText = document.getElementById('unable-transfer-context');
+  const isUnable = value === 'Unable to transfer';
+  if (unableContext) unableContext.style.display = isUnable ? 'block' : 'none';
+  if (!isUnable && unableText) unableText.value = '';
 }
 
 function renderFollowupBadges() {
@@ -1918,11 +1967,16 @@ function generateNote() {
   const followup= document.getElementById('followup').value;
   const extra   = document.getElementById('extra').value.trim();
   const medallia= document.getElementById('medallia').value;
+  const unableTransferDetails = document.getElementById('unable-transfer-context')?.value.trim();
 
   const unableToValidate = isUnableToValidate();
 
   if (!unableToValidate && outcome.includes('engineer visit booked') && !engDate) {
     alert('Please enter the Engineer Visit Date - it is mandatory for this outcome.');
+    return;
+  }
+  if (outcome === 'Unable to transfer' && !unableTransferDetails) {
+    alert('Please describe what was done and why transfer could not be completed.');
     return;
   }
 
@@ -1950,6 +2004,10 @@ function generateNote() {
     'Mobile Contact Number: ' + mobile,
     'How Was Customer Validated: ' + validation
   ];
+  if (validation === 'Low validation') {
+    const lowReason = document.getElementById('low-validation-reason').value.trim();
+    mandatoryLines.push('Low Validation Reason: ' + lowReason);
+  }
   if (validation === 'Skip Validation') {
     mandatoryLines.push('Skip Validation Reason: ' + skipReason);
     if (skipReason === 'Employee EIN') {
@@ -1980,9 +2038,16 @@ function generateNote() {
   sections.push({ heading: 'MANDATORY DETAILS', lines: mandatoryLines });
 
   if (unableToValidate) {
+    const invalidReason = document.getElementById('unable-to-validate-reason')?.value;
+    const validationLines = [
+      'Call Outcome: Customer failed validation.'
+    ];
+    if (invalidReason) {
+      validationLines.push('Unable to validate reason: ' + invalidReason);
+    }
     sections.push({
       heading: 'VALIDATION OUTCOME',
-      lines: ['Unable to validate customer identity - no account-specific actions or fault details progressed. Call closed / escalated per process.']
+      lines: validationLines
     });
   } else if (misrouted) {
     sections.push({
@@ -2009,6 +2074,9 @@ function generateNote() {
   if (!unableToValidate) {
     const outcomeLines = [];
     if (outcome)  outcomeLines.push('Outcome: ' + outcome);
+    if (outcome === 'Unable to transfer' && unableTransferDetails) {
+      outcomeLines.push('Unable to transfer details: ' + unableTransferDetails);
+    }
     if (ref)      outcomeLines.push('Reference: ' + ref);
     if (engDate)  outcomeLines.push('Engineer Visit Date: ' + fmtDate(engDate));
     if (followup) outcomeLines.push('Follow-up: ' + followup);
@@ -2198,6 +2266,13 @@ function validateStep(step) {
         }
       }
     }
+    if (validation === 'Low validation') {
+      const lowReason = document.getElementById('low-validation-reason').value.trim();
+      if (!lowReason) {
+        alert('Please enter a reason for Low Validation');
+        return false;
+      }
+    }
     return true;
   }
 
@@ -2252,6 +2327,15 @@ function validateStep(step) {
   }
 
   return true;
+}
+
+function nextOrGenerate(fromStep) {
+  if (!validateStep(fromStep)) return;
+  if (fromStep === 1 && isUnableToValidate()) {
+    generateNote();
+  } else {
+    goToStep(fromStep + 1);
+  }
 }
 
 function nextStep(fromStep) {
