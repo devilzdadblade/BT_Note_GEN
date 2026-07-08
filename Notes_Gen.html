@@ -160,6 +160,10 @@
   .btn-log      { background: white; border: 1.5px solid var(--bt-purple); color: var(--bt-purple); }
 
   .visible { display: inline-flex !important; }
+  .step-section.visible {
+    display: block !important;
+    animation: slideIn 0.3s ease-in-out;
+  }
   .post-btns { margin-left: auto; display: flex; gap: 12px; }
 
   .output-card {
@@ -464,12 +468,14 @@
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('No Transfer',this)">No Transfer</span>
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Consultation',this)">Consultation</span>
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Transferring',this)">Transferring</span>
+            <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Misrouted Call',this)">Misrouted Call</span>
           </div>
           <select id="call-handling" onchange="handleCallHandlingChange()" style="display:none">
             <option value=""></option>
             <option value="No Transfer"></option>
             <option value="Consultation"></option>
             <option value="Transferring"></option>
+            <option value="Misrouted Call"></option>
           </select>
         </div>
 
@@ -506,6 +512,18 @@
             </select>
           </div>
         </div>
+
+        <div id="misroute-group" style="display:none;">
+          <div class="field">
+            <label>Transfer To Department *</label>
+            <div id="department-badges" class="badge-grid"></div>
+            <input type="hidden" id="misroute-department" value="">
+          </div>
+          <div class="field">
+            <label>Reason for transfer *</label>
+            <textarea id="misroute-reason" placeholder="Enter reason for transfer"></textarea>
+          </div>
+        </div>
       </div>
 
       <div class="step-controls">
@@ -517,18 +535,6 @@
 
     <!-- STEP 3: FAULT DETAILS or TRANSFER DETAILS -->
     <div class="step-section" id="step-3" data-step="3">
-    <div class="card" id="misroute-card" style="display:none;">
-      <div class="card-title">Misrouted Call</div>
-      <div class="field">
-        <label>Transfer To Department</label>
-        <div id="department-badges" class="badge-grid"></div>
-        <input type="hidden" id="misroute-department" value="">
-      </div>
-      <div class="misroute-banner">
-        Misrouted call selected — Fault Details and Troubleshooting are skipped. Pick a department, then generate the note directly from Outcome &amp; Next Steps below.
-      </div>
-    </div>
-
     <div class="card" id="fault-details-card">
       <div class="card-title">Step 3: Fault Details</div>
 
@@ -982,6 +988,7 @@ function handleCallHandlingChange() {
   const val = document.getElementById('call-handling').value;
   const consultationGroup = document.getElementById('consultation-group');
   const transferringGroup = document.getElementById('transferring-group');
+  const misrouteGroup = document.getElementById('misroute-group');
 
   // Reset all fields
   document.getElementById('consultation-with').value = '';
@@ -989,10 +996,19 @@ function handleCallHandlingChange() {
   document.getElementById('consultation-reason').value = '';
   document.getElementById('transfer-department').value = '';
   document.getElementById('transfer-reason').value = '';
+  document.getElementById('misroute-department').value = '';
+  document.getElementById('misroute-reason').value = '';
 
   // Show/hide groups
   consultationGroup.style.display = val === 'Consultation' ? 'block' : 'none';
   transferringGroup.style.display = val === 'Transferring' ? 'block' : 'none';
+  if (misrouteGroup) misrouteGroup.style.display = val === 'Misrouted Call' ? 'block' : 'none';
+
+  // Misroute state
+  misroutedActive = val === 'Misrouted Call';
+  if (misroutedActive) {
+    renderDepartmentBadges();
+  }
 
   // Populate dropdowns
   if (val === 'Consultation') {
@@ -1000,6 +1016,7 @@ function handleCallHandlingChange() {
   } else if (val === 'Transferring') {
     populateTransferDepartments('transfer-department');
   }
+  renderOutcomeBadges();
 }
 
 function populateTransferDepartments(selectId) {
@@ -1254,7 +1271,6 @@ const ADDITIONAL_ACTIONS = [
   'Escalate to L2 / SME',
   'Run Call Trace',
   'Provisioning Audit',
-  'Misrouted Call',
   'With Other Provider'
 ];
 
@@ -1344,7 +1360,6 @@ const NOTE_MAP = {
   'Confirm Service Not On BT Network': 'Confirmed the reported service is not provided over the BT network.',
   'With Other Provider':               'Confirmed the service in question is with another provider, not BT.',
   'Advise Customer to Contact Their Provider':'Advised customer to contact their own provider directly for this issue.',
-  'Misrouted Call':                    'Call identified as misrouted - customer required a different department.',
   'Confirm Addon on Account in Portal':'Confirmed the addon is showing correctly on the account in the portal.',
   'Check Order Status':               'Checked order status - confirmed whether provisioning is complete or still pending.',
   'Run Provisioning Audit':           'Ran provisioning audit in systems to check for configuration errors.',
@@ -1390,21 +1405,19 @@ function addBadge(text, badgeEl) {
     badgeEl.classList.remove('active');
     const lines = tsEl.value.split('\n').filter(l => l.trim() !== mapped.trim());
     tsEl.value = lines.join('\n').trim();
-    if (text === 'Misrouted Call') deactivateMisrouted();
   } else {
     if (badgeEl) badgeEl.classList.add('active');
     tsEl.value = tsEl.value.trim() ? tsEl.value.trim() + '\n' + mapped : mapped;
-    if (text === 'Misrouted Call') activateMisrouted();
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MISROUTED CALL FAST PATH
+// MISROUTED CALL STATE
 // ═══════════════════════════════════════════════════════════════════
 let misroutedActive = false;
 
 function isMisrouted() {
-  return misroutedActive;
+  return document.getElementById('call-handling')?.value === 'Misrouted Call';
 }
 
 function isUnableToValidate() {
@@ -1417,7 +1430,6 @@ function refreshFlowVisibility() {
   document.getElementById('fault-details-card').style.display   = hideFaultAndTS ? 'none' : 'block';
   document.getElementById('troubleshooting-card').style.display = hideFaultAndTS ? 'none' : 'block';
   document.getElementById('outcome-next-steps-card').style.display = unableToValidate ? 'none' : 'block';
-  document.getElementById('misroute-card').style.display = (misroutedActive && !unableToValidate) ? 'block' : 'none';
 }
 
 function isUnableToValidateReasonSelected() {
@@ -1434,17 +1446,18 @@ function updateStep3NextButtonLabel() {
       : 'Next: Outcome';
 }
 
-function activateMisrouted() {
-  misroutedActive = true;
-  refreshFlowVisibility();
-  renderDepartmentBadges();
-  document.getElementById('misroute-card').scrollIntoView({ behavior:'smooth', block:'center' });
+function isUnableToValidateReasonSelected() {
+  return isUnableToValidate() && !!document.getElementById('unable-to-validate-reason')?.value;
 }
 
-function deactivateMisrouted() {
-  misroutedActive = false;
-  document.getElementById('misroute-department').value = '';
-  refreshFlowVisibility();
+function updateStep3NextButtonLabel() {
+  const method = document.getElementById('validation-method').value;
+  const step3NextBtn = document.getElementById('step3-next-btn');
+  if (!step3NextBtn) return;
+  step3NextBtn.textContent =
+    method === 'Unable to Validate' && isUnableToValidateReasonSelected()
+      ? 'Generate Note'
+      : 'Next: Outcome';
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1814,12 +1827,24 @@ function populateSelectFromOptions(selectId, options) {
     options.map(o => `<option value="${o.value.replace(/"/g,'&quot;')}">${o.label}</option>`).join('');
 }
 
+const MISROUTED_OUTCOME_VALUES = [
+  'Call transferring to a different department',
+  'Out of hours',
+  'Unable to transfer'
+];
+
 function renderOutcomeBadges() {
   const wrap = document.getElementById('outcome-badges');
   if (!wrap) return;
-  const cur = document.getElementById('outcome').value;
-  wrap.innerHTML = OUTCOME_OPTIONS.map(item => {
-    const active = cur === item.value ? ' active' : '';
+  const outcomeEl = document.getElementById('outcome');
+  if (!outcomeEl) return;
+  const cur = outcomeEl.value;
+  const allowed = isMisrouted() ? OUTCOME_OPTIONS.filter(item => MISROUTED_OUTCOME_VALUES.includes(item.value)) : OUTCOME_OPTIONS;
+  if (cur && !allowed.some(item => item.value === cur)) {
+    outcomeEl.value = '';
+  }
+  wrap.innerHTML = allowed.map(item => {
+    const active = outcomeEl.value === item.value ? ' active' : '';
     return `<span class="badge-choice${active}" onclick="setOutcome('${item.value.replace(/'/g,"\\'")}',this)">${item.label}</span>`;
   }).join('');
 }
@@ -1970,6 +1995,9 @@ function generateNote() {
   const unableTransferDetails = document.getElementById('unable-transfer-context')?.value.trim();
 
   const unableToValidate = isUnableToValidate();
+  const misrouted  = !unableToValidate && isMisrouted();
+  const department = document.getElementById('misroute-department').value;
+  const misrouteReason = document.getElementById('misroute-reason')?.value.trim();
 
   if (!unableToValidate && outcome.includes('engineer visit booked') && !engDate) {
     alert('Please enter the Engineer Visit Date - it is mandatory for this outcome.');
@@ -1979,9 +2007,6 @@ function generateNote() {
     alert('Please describe what was done and why transfer could not be completed.');
     return;
   }
-
-  const misrouted  = !unableToValidate && isMisrouted();
-  const department = document.getElementById('misroute-department').value;
 
   if (misrouted && !department) {
     alert('Please select a department to transfer this misrouted call to.');
@@ -2052,7 +2077,7 @@ function generateNote() {
   } else if (misrouted) {
     sections.push({
       heading: 'MISROUTED CALL',
-      lines: ['Transferred To Department: ' + department]
+      lines: ['Transferring the customer to ' + department + ' due to ' + misrouteReason + '.']
     });
   } else {
     const product = document.getElementById('product').value;
@@ -2298,6 +2323,13 @@ function validateStep(step) {
         alert('Please complete all Transfer fields');
         return false;
       }
+    } else if (callHandling === 'Misrouted Call') {
+      const department = document.getElementById('misroute-department').value;
+      const misrouteReason = document.getElementById('misroute-reason').value.trim();
+      if (!department || !misrouteReason) {
+        alert('Please select a misroute department and enter the reason for transfer');
+        return false;
+      }
     }
     return true;
   }
@@ -2340,7 +2372,11 @@ function nextOrGenerate(fromStep) {
 
 function nextStep(fromStep) {
   if (!validateStep(fromStep)) return;
-  goToStep(fromStep + 1);
+  if (fromStep === 2 && isMisrouted()) {
+    goToStep(4);
+  } else {
+    goToStep(fromStep + 1);
+  }
 }
 
 function prevStep() {
