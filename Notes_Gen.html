@@ -359,9 +359,19 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field" id="agent-id-field">
         <label>Agent ID / EIN Taking Call</label>
-        <input type="text" id="agent-id" placeholder="Your EIN / agent ID">
+        <div id="agent-id-editable" style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="agent-id" placeholder="Your EIN / agent ID" onblur="saveAgentIdOnBlur()">
+          <button class="btn-secondary" id="save-agent-btn" onclick="saveAgentId()">Save</button>
+        </div>
+        <div id="agent-id-saved" style="display:none; align-items:center; gap:12px;">
+          <span id="agent-id-display" style="font-weight:800;"></span>
+          <div style="display:inline-flex; gap:8px;">
+            <button class="btn-secondary" onclick="editAgentId()">Edit</button>
+            <button class="btn-secondary" onclick="removeAgentId()">Remove</button>
+          </div>
+        </div>
       </div>
 
       <div class="three-col">
@@ -1784,6 +1794,63 @@ function initFaultDetails() {
 
 window.addEventListener('DOMContentLoaded', initFaultDetails);
 
+// Initialize and manage session-persistent Agent ID (saved to sessionStorage)
+function initAgentId() {
+  const saved = sessionStorage.getItem('agentId');
+  const savedDiv = document.getElementById('agent-id-saved');
+  const editDiv = document.getElementById('agent-id-editable');
+  const input = document.getElementById('agent-id');
+  const display = document.getElementById('agent-id-display');
+  if (!savedDiv || !editDiv || !input || !display) return;
+  if (saved) {
+    display.textContent = saved;
+    savedDiv.style.display = 'flex';
+    editDiv.style.display = 'none';
+  } else {
+    savedDiv.style.display = 'none';
+    editDiv.style.display = 'flex';
+  }
+}
+
+function saveAgentId() {
+  const input = document.getElementById('agent-id');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) { alert('Please enter Agent ID to save.'); return; }
+  sessionStorage.setItem('agentId', val);
+  initAgentId();
+}
+
+function saveAgentIdOnBlur() {
+  const input = document.getElementById('agent-id');
+  if (!input) return;
+  const val = input.value.trim();
+  if (val) {
+    sessionStorage.setItem('agentId', val);
+    initAgentId();
+  }
+}
+
+function editAgentId() {
+  const editDiv = document.getElementById('agent-id-editable');
+  const savedDiv = document.getElementById('agent-id-saved');
+  const input = document.getElementById('agent-id');
+  if (!editDiv || !savedDiv || !input) return;
+  editDiv.style.display = 'flex';
+  savedDiv.style.display = 'none';
+  input.value = sessionStorage.getItem('agentId') || '';
+  input.focus();
+}
+
+function removeAgentId() {
+  if (!confirm('Remove saved Agent ID for this session?')) return;
+  sessionStorage.removeItem('agentId');
+  initAgentId();
+}
+
+// ensure agent id UI reflects saved value on load
+window.addEventListener('DOMContentLoaded', function() { initAgentId(); });
+
 // ═══════════════════════════════════════════════════════════════════
 // OUTCOME / FOLLOW-UP / MEDALLIA BADGES
 // ═══════════════════════════════════════════════════════════════════
@@ -1994,6 +2061,9 @@ function generateNote() {
   const medallia= document.getElementById('medallia').value;
   const unableTransferDetails = document.getElementById('unable-transfer-context')?.value.trim();
 
+  // Use saved session Agent ID if present, otherwise fall back to input value
+  const agentId = (window.sessionStorage && sessionStorage.getItem('agentId')) || document.getElementById('agent-id').value.trim();
+
   const unableToValidate = isUnableToValidate();
   const misrouted  = !unableToValidate && isMisrouted();
   const department = document.getElementById('misroute-department').value;
@@ -2029,6 +2099,9 @@ function generateNote() {
     'Mobile Contact Number: ' + mobile,
     'How Was Customer Validated: ' + validation
   ];
+  if (agentId) {
+    mandatoryLines.unshift('Agent ID: ' + agentId);
+  }
   if (validation === 'Low validation') {
     const lowReason = document.getElementById('low-validation-reason').value.trim();
     mandatoryLines.push('Low Validation Reason: ' + lowReason);
