@@ -83,7 +83,33 @@
   .log-pill.danger { background: rgba(230,0,80,.18); border-color: rgba(230,0,80,.4); }
   .log-pill.danger:hover { background: rgba(230,0,80,.35); }
 
-  .page { max-width: 900px; margin: auto; padding: 2.5rem 1.5rem 5rem; }
+  .page { max-width: 1200px; margin: auto; padding: 2.5rem 1.5rem 5rem; }
+
+  .page-shell {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .notes-sidebar {
+    position: sticky;
+    top: 88px;
+  }
+
+  .notes-sidebar .card {
+    margin-bottom: 0;
+  }
+
+  .notes-card .card-title {
+    margin-bottom: 0.9rem;
+  }
+
+  .notes-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
 
   .card {
     background: var(--surface);
@@ -184,6 +210,8 @@
 
   @media(max-width:650px) {
     .two-col, .three-col { grid-template-columns: 1fr; }
+    .page-shell { grid-template-columns: 1fr; }
+    .notes-sidebar { position: static; }
     .action-row { flex-direction: column; width: 100%; }
     .post-btns  { margin-left: 0; width: 100%; }
     button      { width: 100%; justify-content: center; }
@@ -322,7 +350,16 @@
 
 <div class="page">
 
-  <div style="margin-bottom:2rem; display:flex; justify-content:center;">
+  <div class="page-shell">
+    <aside class="notes-sidebar">
+      <div class="card notes-card">
+        <div class="card-title">User Notes</div>
+        <p class="notes-text">To use the latest features copy the link and paste it to another tab. This way all the new updates will be available to you. Reccommend doing this every 4 hours, as it is getting rapidly updated.</p>
+      </div>
+    </aside>
+
+    <div>
+      <div style="margin-bottom:2rem; display:flex; justify-content:center;">
     <select id="form-type-selector" onchange="toggleFormType()"
       style="width:auto; border:2px solid var(--bt-purple); color:var(--bt-purple); font-weight:800;">
       <option value="call">Call Notes Form</option>
@@ -430,12 +467,14 @@
           <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Not a registered contact','unable-to-validate-reason',this)">Not a Registered Contact</span>
           <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Details not matching','unable-to-validate-reason',this)">Details Not Matching</span>
           <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Customer is with 3rd Party Provider','unable-to-validate-reason',this)">Customer is with 3rd Party Provider</span>
+          <span class="badge-option" data-group="unable-reason" onclick="selectBadge('unable-reason','Call dropped','unable-to-validate-reason',this)">Call dropped</span>
         </div>
         <select id="unable-to-validate-reason" style="display:none">
           <option value=""></option>
           <option value="Not a registered contact"></option>
           <option value="Details not matching"></option>
           <option value="Customer is with 3rd Party Provider"></option>
+          <option value="Call dropped"></option>
         </select>
       </div>
 
@@ -740,6 +779,7 @@
         <span class="output-label">Generated Complaint Note</span>
       </div>
       <div id="comp-note-output"></div>
+    </div>
     </div>
   </div>
 
