@@ -3,35 +3,120 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BT Call Notes Generator</title>
+<title>BT Notes Gen</title>
+<script>
+  // Applied immediately (before CSS paints) to avoid a flash of the wrong theme.
+  (function() {
+    try {
+      var saved = localStorage.getItem('bt_notes_theme');
+      if (!saved) {
+        saved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
 <style>
   :root {
     --bt-purple: #5514B4;
     --bt-purple-dark: #3d0d87;
     --bt-purple-light: #f0ebfa;
     --accent: #e60050;
-    --bg-gradient-1: #e2e2e2;
-    --bg-gradient-2: #c9d6ff;
-    --surface: rgba(255,255,255,0.88);
+    --info: #2563eb;
+    --bg-gradient-1: #e5e7f5;
+    --bg-gradient-2: #cdd8ff;
+    --blob-1: rgba(157,92,255,.30);
+    --blob-2: rgba(230,0,80,.16);
+    --surface: rgba(255,255,255,0.62);
+    --surface-solid: rgba(255,255,255,0.92);
+    --surface-border: rgba(255,255,255,0.75);
     --text: #1a202c;
     --text-muted: #4a5568;
     --border-focus: #5514B4;
+    --focus-ring: rgba(85,20,180,.16);
+    --input-bg: rgba(255,255,255,0.75);
+    --input-border: rgba(200,205,215,0.9);
+    --badge-bg: rgba(255,255,255,0.75);
+    --badge-border: #c9b0e8;
+    --step-badge-bg: rgba(0,0,0,0.08);
+    --step-badge-completed: #4ade80;
+    --scrollbar-thumb: rgba(85,20,180,.35);
     --radius: 12px;
     --radius-lg: 20px;
-    --shadow-md: 0 10px 25px -5px rgba(85,20,180,.08);
+    --blur: 18px;
+    --shadow-md: 0 10px 25px -5px rgba(85,20,180,.10);
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] {
+    --bt-purple: #9d6bff;
+    --bt-purple-dark: #7c3aed;
+    --bt-purple-light: rgba(157,107,255,0.16);
+    --accent: #ff4d8d;
+    --info: #6ea8fe;
+    --bg-gradient-1: #0b0714;
+    --bg-gradient-2: #1c0f30;
+    --blob-1: rgba(157,92,255,.35);
+    --blob-2: rgba(255,45,120,.22);
+    --surface: rgba(38,27,58,0.55);
+    --surface-solid: rgba(24,17,38,0.92);
+    --surface-border: rgba(255,255,255,0.09);
+    --text: #f3eefc;
+    --text-muted: #b6a9d6;
+    --border-focus: #b48bff;
+    --focus-ring: rgba(180,139,255,.25);
+    --input-bg: rgba(18,12,30,0.55);
+    --input-border: rgba(255,255,255,0.14);
+    --badge-bg: rgba(255,255,255,0.06);
+    --badge-border: rgba(180,139,255,0.4);
+    --step-badge-bg: rgba(255,255,255,0.08);
+    --step-badge-completed: #34c98f;
+    --scrollbar-thumb: rgba(180,139,255,.4);
+    --shadow-md: 0 12px 32px -8px rgba(0,0,0,.55);
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { transition: background .25s ease; }
 
   body {
     font-family: 'BT Curve', Inter, system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
     color: var(--text);
     min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    transition: background .25s ease, color .25s ease;
   }
 
+  /* Ambient glass blobs behind the frosted cards */
+  body::before, body::after {
+    content: "";
+    position: fixed;
+    width: 520px; height: 520px;
+    border-radius: 50%;
+    filter: blur(110px);
+    z-index: -1;
+    pointer-events: none;
+    transition: background .25s ease;
+  }
+  body::before { background: var(--blob-1); top: -160px; left: -140px; }
+  body::after  { background: var(--blob-2); bottom: -180px; right: -120px; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
+
+  ::placeholder { color: var(--text-muted); opacity: .65; }
+
   .topbar {
-    background: linear-gradient(90deg, var(--bt-purple), var(--bt-purple-dark));
+    background: linear-gradient(90deg, rgba(85,20,180,.92), rgba(61,13,135,.92));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,.12);
     height: 64px;
     padding: 0 2rem;
     display: flex;
@@ -41,6 +126,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
+    transition: background .25s ease;
   }
 
   .topbar-brand { display: flex; align-items: center; gap: 14px; }
@@ -113,11 +199,14 @@
 
   .card {
     background: var(--surface);
-    border: 1px solid rgba(255,255,255,.65);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--surface-border);
     border-radius: var(--radius-lg);
     padding: 2rem;
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-md);
+    transition: background .25s ease, border-color .25s ease;
   }
 
   .card-title {
@@ -147,20 +236,25 @@
   input, select, textarea {
     font-family: inherit; font-size: 14px; font-weight: 500;
     padding: 12px 14px; border-radius: var(--radius);
-    border: 1.5px solid rgba(200,205,215,.8);
-    outline: none; width: 100%; background: white;
+    border: 1.5px solid var(--input-border);
+    outline: none; width: 100%; background: var(--input-bg);
+    color: var(--text);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: background .25s ease, border-color .15s ease, box-shadow .15s ease;
   }
   input:focus, select:focus, textarea:focus {
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 4px rgba(85,20,180,.15);
+    box-shadow: 0 0 0 4px var(--focus-ring);
   }
   textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  select option { background: var(--surface-solid); color: var(--text); }
 
   .badge-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
   .badge {
     font-size: 12px; padding: 7px 14px; border-radius: 30px;
-    background: white; color: var(--bt-purple);
-    border: 1px solid #c9b0e8; font-weight: 700; cursor: pointer;
+    background: var(--badge-bg); color: var(--bt-purple);
+    border: 1px solid var(--badge-border); font-weight: 700; cursor: pointer;
     transition: background .15s, color .15s;
   }
   .badge:hover  { background: var(--bt-purple); color: white; }
@@ -179,11 +273,11 @@
   }
   button:hover { opacity: .88; }
 
-  .btn-primary  { background: var(--bt-purple); color: white; }
-  .btn-secondary { background: white; border: 1.5px solid #cbd5e1; color: var(--text-muted); }
-  .btn-copy     { display: none; background: #2563eb; color: white; }
-  .btn-download { display: none; background: white; color: #2563eb; border: 1.5px solid #2563eb; }
-  .btn-log      { background: white; border: 1.5px solid var(--bt-purple); color: var(--bt-purple); }
+  .btn-primary  { background: var(--bt-purple); color: white; box-shadow: 0 6px 18px -6px rgba(85,20,180,.5); }
+  .btn-secondary { background: var(--surface-solid); border: 1.5px solid var(--input-border); color: var(--text-muted); }
+  .btn-copy     { display: none; background: var(--info); color: white; }
+  .btn-download { display: none; background: var(--surface-solid); color: var(--info); border: 1.5px solid var(--info); }
+  .btn-log      { background: var(--surface-solid); border: 1.5px solid var(--bt-purple); color: var(--bt-purple); }
 
   .visible { display: inline-flex !important; }
   .step-section.visible {
@@ -193,15 +287,19 @@
   .post-btns { margin-left: auto; display: flex; gap: 12px; }
 
   .output-card {
-    display: none; background: white;
+    display: none; background: var(--surface-solid);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
     border: 2px solid var(--bt-purple);
     border-radius: var(--radius-lg);
     padding: 2rem; margin-top: 2rem; white-space: pre-wrap;
+    color: var(--text);
+    box-shadow: var(--shadow-md);
   }
   .output-card.visible { display: block !important; }
   .output-header {
     display: flex; justify-content: space-between;
-    border-bottom: 2px dashed rgba(85,20,180,.15);
+    border-bottom: 2px dashed var(--focus-ring);
     padding-bottom: 1rem; margin-bottom: 1rem;
   }
   .output-label { color: var(--bt-purple); font-weight: 900; font-size: 13px; text-transform: uppercase; }
@@ -220,7 +318,7 @@
   .badge-select { display: flex; flex-wrap: wrap; gap: 8px; }
   .badge-option {
     font-size: 12px; padding: 8px 14px; border-radius: 30px;
-    background: #fff; border: 1px solid #c9b0e8;
+    background: var(--badge-bg); border: 1px solid var(--badge-border);
     color: var(--bt-purple); font-weight: 700; cursor: pointer;
     transition: background .15s, color .15s;
   }
@@ -228,12 +326,12 @@
 
   .badge-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
   .badge-choice {
-    padding: 8px 14px; border: 1px solid #c9b0e8; border-radius: 999px;
-    background: #fff; color: #5514B4; font-weight: 700;
+    padding: 8px 14px; border: 1px solid var(--badge-border); border-radius: 999px;
+    background: var(--badge-bg); color: var(--bt-purple); font-weight: 700;
     cursor: pointer; font-size: 12px;
     transition: background .15s, color .15s;
   }
-  .badge-choice.active { background: #5514B4; color: #fff; }
+  .badge-choice.active { background: var(--bt-purple); color: #fff; }
 
   .misroute-banner {
     background: var(--bt-purple-light);
@@ -241,7 +339,7 @@
     border-radius: var(--radius);
     padding: 14px 16px;
     font-size: 13px;
-    color: var(--bt-purple-dark);
+    color: var(--text);
     font-weight: 700;
     margin-top: 10px;
   }
@@ -262,7 +360,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #e8e8e8;
+    background: var(--step-badge-bg);
     color: var(--text-muted);
     font-weight: 700;
     font-size: 14px;
@@ -271,16 +369,16 @@
   .step-badge.active {
     background: var(--bt-purple);
     color: white;
-    box-shadow: 0 0 0 4px rgba(85,20,180,.15);
+    box-shadow: 0 0 0 4px var(--focus-ring);
   }
   .step-badge.completed {
-    background: #4ade80;
+    background: var(--step-badge-completed);
     color: white;
   }
   .step-connector {
     width: 24px;
     height: 2px;
-    background: #e8e8e8;
+    background: var(--step-badge-bg);
   }
   .step-connector.active {
     background: var(--bt-purple);
@@ -303,9 +401,9 @@
     gap: 12px;
     margin-top: 2rem;
     justify-content: space-between;
-    background: var(--surface);
+    background: transparent;
     padding-top: 1rem;
-    border-top: 1px solid rgba(0,0,0,.08);
+    border-top: 1px solid var(--surface-border);
   }
   .step-section#step-3 .step-controls,
   .step-section#step-4 .step-controls {
@@ -319,13 +417,62 @@
     flex: 1;
   }
   .step-controls .btn-back {
-    background: white;
-    border: 1.5px solid #cbd5e1;
+    background: var(--surface-solid);
+    border: 1.5px solid var(--input-border);
     color: var(--text-muted);
   }
   .step-controls .btn-back:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* Theme toggle — sliding switch */
+  .theme-switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: white;
+    white-space: nowrap;
+  }
+  .theme-switch-caption { opacity: .85; }
+  .theme-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.4);
+    background: rgba(255,255,255,.15);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background .25s ease, border-color .25s ease;
+  }
+  .theme-switch:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+  .theme-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,.3);
+    transition: transform .25s ease, background .25s ease;
+  }
+  [data-theme="dark"] .theme-switch {
+    background: var(--bt-purple);
+    border-color: rgba(255,255,255,.5);
+  }
+  [data-theme="dark"] .theme-switch-knob {
+    transform: translateX(20px);
+    background: #14101f;
   }
 </style>
 </head>
@@ -341,10 +488,17 @@
   </div>
   <div class="topbar-right">
     <div id="clock"></div>
-    <div class="log-pill" onclick="downloadAllNotes()" title="Download all notes as one .txt file">
-      📋 <span id="log-count">0</span> notes
+    <div class="theme-switch-wrap" title="Switch light / dark mode">
+      <span class="theme-switch-caption">Dark Mode</span>
+      <button type="button" class="theme-switch" id="theme-toggle-btn" onclick="toggleTheme()"
+        role="switch" aria-checked="false" aria-label="Toggle dark mode">
+        <span class="theme-switch-knob"></span>
+      </button>
     </div>
-    <div class="log-pill danger" onclick="clearSessionLog()" title="Clear session log">🗑</div>
+    <div class="log-pill" onclick="downloadAllNotes()" title="Download all notes as one .txt file">
+      <span id="log-count">0</span> Notes
+    </div>
+    <div class="log-pill danger" onclick="clearSessionLog()" title="Clear session log">Clear</div>
   </div>
 </div>
 
@@ -432,6 +586,7 @@
           <div class="badge-select">
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to phone','validation-method',this)">PIN Phone</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to email','validation-method',this)">PIN Email</span>
+            <span class="badge-option" data-group="validation" onclick="selectBadge('validation','IVR Validated','validation-method',this)">IVR Validated</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Low validation','validation-method',this)">Low Validation</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Skip Validation','validation-method',this)">Skip Validation</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Unable to Validate','validation-method',this)">Unable to Validate</span>
@@ -440,6 +595,7 @@
             <option value=""></option>
             <option value="High Validated - PIN sent to phone"></option>
             <option value="High Validated - PIN sent to email"></option>
+            <option value="IVR Validated"></option>
             <option value="Low validation"></option>
             <option value="Skip Validation"></option>
             <option value="Unable to Validate"></option>
@@ -516,14 +672,12 @@
           <div class="badge-select">
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('No Transfer',this)">No Transfer</span>
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Consultation',this)">Consultation</span>
-            <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Transferring',this)">Transferring</span>
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Misrouted Call',this)">Misrouted Call</span>
           </div>
           <select id="call-handling" onchange="handleCallHandlingChange()" style="display:none">
             <option value=""></option>
             <option value="No Transfer"></option>
             <option value="Consultation"></option>
-            <option value="Transferring"></option>
             <option value="Misrouted Call"></option>
           </select>
         </div>
@@ -542,21 +696,6 @@
           <div class="field">
             <label>Consultation Reason *</label>
             <select id="consultation-reason">
-              <option value="">— Select Reason —</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="transferring-group" style="display:none;">
-          <div class="field">
-            <label>Transfer Department *</label>
-            <select id="transfer-department" onchange="handleTransferDepartmentChange()">
-              <option value="">— Select Department —</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Transfer Reason *</label>
-            <select id="transfer-reason">
               <option value="">— Select Reason —</option>
             </select>
           </div>
@@ -715,7 +854,7 @@
 
     <div class="action-row" style="margin-top:3rem;">
       <button class="btn-secondary" onclick="clearAll()">Clear Form</button>
-      <button class="btn-log"       onclick="downloadAllNotes()">📋 Download All (<span id="log-count2">0</span>)</button>
+      <button class="btn-log"       onclick="downloadAllNotes()">Download All (<span id="log-count2">0</span>)</button>
       <div class="post-btns">
         <button class="btn-copy"     id="copy-btn"     onclick="copyNote()">Copy Note</button>
         <button class="btn-download" id="download-btn" onclick="downloadNote()">Save Note</button>
@@ -788,6 +927,28 @@
 <div class="footer">BT Call Notes Generator — offline tool — no data leaves this page</div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════════
+// THEME TOGGLE (light / dark glass)
+// ═══════════════════════════════════════════════════════════════════
+const THEME_KEY = 'bt_notes_theme';
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const toggleBtn = document.getElementById('theme-toggle-btn');
+  if (toggleBtn) toggleBtn.setAttribute('aria-checked', theme === 'dark' ? 'true' : 'false');
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current);
+});
+
 // ═══════════════════════════════════════════════════════════════════
 // CLOCK & AUTO DATE/TIME
 // ═══════════════════════════════════════════════════════════════════
@@ -1037,21 +1198,17 @@ function selectCallHandling(value, el) {
 function handleCallHandlingChange() {
   const val = document.getElementById('call-handling').value;
   const consultationGroup = document.getElementById('consultation-group');
-  const transferringGroup = document.getElementById('transferring-group');
   const misrouteGroup = document.getElementById('misroute-group');
 
   // Reset all fields
   document.getElementById('consultation-with').value = '';
   document.getElementById('consultation-department').value = '';
   document.getElementById('consultation-reason').value = '';
-  document.getElementById('transfer-department').value = '';
-  document.getElementById('transfer-reason').value = '';
   document.getElementById('misroute-department').value = '';
   document.getElementById('misroute-reason').value = '';
 
   // Show/hide groups
   consultationGroup.style.display = val === 'Consultation' ? 'block' : 'none';
-  transferringGroup.style.display = val === 'Transferring' ? 'block' : 'none';
   if (misrouteGroup) misrouteGroup.style.display = val === 'Misrouted Call' ? 'block' : 'none';
 
   // Misroute state
@@ -1063,8 +1220,6 @@ function handleCallHandlingChange() {
   // Populate dropdowns
   if (val === 'Consultation') {
     populateTransferDepartments('consultation-department');
-  } else if (val === 'Transferring') {
-    populateTransferDepartments('transfer-department');
   }
   renderOutcomeBadges();
 }
@@ -1079,17 +1234,6 @@ function populateTransferDepartments(selectId) {
 function handleConsultationDepartmentChange() {
   const dept = document.getElementById('consultation-department').value;
   const reasonSel = document.getElementById('consultation-reason');
-  if (!dept || !TRANSFER_DEPARTMENTS[dept]) {
-    reasonSel.innerHTML = '<option value="">— Select Reason —</option>';
-    return;
-  }
-  reasonSel.innerHTML = '<option value="">— Select Reason —</option>' +
-    TRANSFER_DEPARTMENTS[dept].map(reason => `<option value="${reason}">${reason}</option>`).join('');
-}
-
-function handleTransferDepartmentChange() {
-  const dept = document.getElementById('transfer-department').value;
-  const reasonSel = document.getElementById('transfer-reason');
   if (!dept || !TRANSFER_DEPARTMENTS[dept]) {
     reasonSel.innerHTML = '<option value="">— Select Reason —</option>';
     return;
@@ -2067,13 +2211,6 @@ function generateNote() {
       alert('Please complete Consultation fields: Consulted With, Department, and Reason.');
       return;
     }
-  } else if (callHandling === 'Transferring') {
-    const transferDept = document.getElementById('transfer-department').value;
-    const transferReason = document.getElementById('transfer-reason').value;
-    if (!transferDept || !transferReason) {
-      alert('Please complete Transfer fields: Department and Reason.');
-      return;
-    }
   }
 
   const skipReason  = document.getElementById('skip-validation-reason').value;
@@ -2165,12 +2302,6 @@ function generateNote() {
     mandatoryLines.push('Consulted With: ' + consultWith);
     mandatoryLines.push('Consultation Department: ' + consultDept);
     mandatoryLines.push('Consultation Reason: ' + consultReason);
-  } else if (callHandling === 'Transferring') {
-    const transferDept = document.getElementById('transfer-department').value;
-    const transferReason = document.getElementById('transfer-reason').value;
-    mandatoryLines.push('Call Handling: Transferring');
-    mandatoryLines.push('Transfer Department: ' + transferDept);
-    mandatoryLines.push('Transfer Reason: ' + transferReason);
   }
   
   sections.push({ heading: 'MANDATORY DETAILS', lines: mandatoryLines });
@@ -2429,13 +2560,6 @@ function validateStep(step) {
         alert('Please complete all Consultation fields');
         return false;
       }
-    } else if (callHandling === 'Transferring') {
-      const transferDept = document.getElementById('transfer-department').value;
-      const transferReason = document.getElementById('transfer-reason').value;
-      if (!transferDept || !transferReason) {
-        alert('Please complete all Transfer fields');
-        return false;
-      }
     } else if (callHandling === 'Misrouted Call') {
       const department = document.getElementById('misroute-department').value;
       const misrouteReason = document.getElementById('misroute-reason').value.trim();
@@ -2450,8 +2574,8 @@ function validateStep(step) {
   if (step === 3) {
     const callHandling = document.getElementById('call-handling').value;
     
-    // If Consultation or Transferring, skip fault details validation
-    if (callHandling === 'Consultation' || callHandling === 'Transferring') {
+    // If Consultation, skip fault details validation
+    if (callHandling === 'Consultation') {
       return true;
     }
 
