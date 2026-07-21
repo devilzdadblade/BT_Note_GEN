@@ -587,6 +587,7 @@
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to phone','validation-method',this)">PIN Phone</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','High Validated - PIN sent to email','validation-method',this)">PIN Email</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','IVR Validated','validation-method',this)">IVR Validated</span>
+            <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Consultation','validation-method',this)">Consultation</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Low validation','validation-method',this)">Low Validation</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Skip Validation','validation-method',this)">Skip Validation</span>
             <span class="badge-option" data-group="validation" onclick="selectBadge('validation','Unable to Validate','validation-method',this)">Unable to Validate</span>
@@ -596,6 +597,7 @@
             <option value="High Validated - PIN sent to phone"></option>
             <option value="High Validated - PIN sent to email"></option>
             <option value="IVR Validated"></option>
+            <option value="Consultation"></option>
             <option value="Low validation"></option>
             <option value="Skip Validation"></option>
             <option value="Unable to Validate"></option>
@@ -608,6 +610,19 @@
             <option value="">— Select —</option>
             <option value="Employee EIN">Employee EIN</option>
             <option value="System issue">System issue</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" id="consultation-fields-container" style="display:none;">
+        <div class="field">
+          <label>Consulted With *</label>
+          <input type="text" id="consultation-with" placeholder="Name / EIN of advisor consulted">
+        </div>
+        <div class="field">
+          <label>Consultation Department *</label>
+          <select id="consultation-department">
+            <option value="">— Select Department —</option>
           </select>
         </div>
       </div>
@@ -671,34 +686,13 @@
           <label>Call Handling</label>
           <div class="badge-select">
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('No Transfer',this)">No Transfer</span>
-            <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Consultation',this)">Consultation</span>
             <span class="badge-option" data-group="call-handling" onclick="selectCallHandling('Misrouted Call',this)">Misrouted Call</span>
           </div>
           <select id="call-handling" onchange="handleCallHandlingChange()" style="display:none">
             <option value=""></option>
             <option value="No Transfer"></option>
-            <option value="Consultation"></option>
             <option value="Misrouted Call"></option>
           </select>
-        </div>
-
-        <div id="consultation-group" style="display:none;">
-          <div class="field">
-            <label>Consulted With *</label>
-            <input type="text" id="consultation-with" placeholder="Name / EIN of advisor consulted">
-          </div>
-          <div class="field">
-            <label>Consultation Department *</label>
-            <select id="consultation-department" onchange="handleConsultationDepartmentChange()">
-              <option value="">— Select Department —</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Consultation Reason *</label>
-            <select id="consultation-reason">
-              <option value="">— Select Reason —</option>
-            </select>
-          </div>
         </div>
 
         <div id="misroute-group" style="display:none;">
@@ -1197,18 +1191,13 @@ function selectCallHandling(value, el) {
 
 function handleCallHandlingChange() {
   const val = document.getElementById('call-handling').value;
-  const consultationGroup = document.getElementById('consultation-group');
   const misrouteGroup = document.getElementById('misroute-group');
 
   // Reset all fields
-  document.getElementById('consultation-with').value = '';
-  document.getElementById('consultation-department').value = '';
-  document.getElementById('consultation-reason').value = '';
   document.getElementById('misroute-department').value = '';
   document.getElementById('misroute-reason').value = '';
 
   // Show/hide groups
-  consultationGroup.style.display = val === 'Consultation' ? 'block' : 'none';
   if (misrouteGroup) misrouteGroup.style.display = val === 'Misrouted Call' ? 'block' : 'none';
 
   // Misroute state
@@ -1217,10 +1206,6 @@ function handleCallHandlingChange() {
     renderDepartmentBadges();
   }
 
-  // Populate dropdowns
-  if (val === 'Consultation') {
-    populateTransferDepartments('consultation-department');
-  }
   renderOutcomeBadges();
 }
 
@@ -1229,17 +1214,6 @@ function populateTransferDepartments(selectId) {
   if (!sel) return;
   sel.innerHTML = '<option value="">— Select Department —</option>' +
     DEPARTMENTS.map(dept => `<option value="${dept}">${dept}</option>`).join('');
-}
-
-function handleConsultationDepartmentChange() {
-  const dept = document.getElementById('consultation-department').value;
-  const reasonSel = document.getElementById('consultation-reason');
-  if (!dept || !TRANSFER_DEPARTMENTS[dept]) {
-    reasonSel.innerHTML = '<option value="">— Select Reason —</option>';
-    return;
-  }
-  reasonSel.innerHTML = '<option value="">— Select Reason —</option>' +
-    TRANSFER_DEPARTMENTS[dept].map(reason => `<option value="${reason}">${reason}</option>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1618,26 +1592,16 @@ function isUnableToValidate() {
   return document.getElementById('validation-method').value === 'Unable to Validate';
 }
 
+function isConsultation() {
+  return document.getElementById('validation-method').value === 'Consultation';
+}
+
 function refreshFlowVisibility() {
   const unableToValidate = isUnableToValidate();
   const hideFaultAndTS = unableToValidate || misroutedActive;
   document.getElementById('fault-details-card').style.display   = hideFaultAndTS ? 'none' : 'block';
   document.getElementById('troubleshooting-card').style.display = hideFaultAndTS ? 'none' : 'block';
   document.getElementById('outcome-next-steps-card').style.display = unableToValidate ? 'none' : 'block';
-}
-
-function isUnableToValidateReasonSelected() {
-  return isUnableToValidate() && !!document.getElementById('unable-to-validate-reason')?.value;
-}
-
-function updateStep3NextButtonLabel() {
-  const method = document.getElementById('validation-method').value;
-  const step3NextBtn = document.getElementById('step3-next-btn');
-  if (!step3NextBtn) return;
-  step3NextBtn.textContent =
-    method === 'Unable to Validate' && isUnableToValidateReasonSelected()
-      ? 'Generate Note'
-      : 'Next: Outcome';
 }
 
 function isUnableToValidateReasonSelected() {
@@ -1666,6 +1630,10 @@ function handleValidationChange() {
     method === 'Low validation' ? 'block' : 'none';
   document.getElementById('unable-to-validate-reason-container').style.display =
     method === 'Unable to Validate' ? 'block' : 'none';
+  const consultationContainer = document.getElementById('consultation-fields-container');
+  if (consultationContainer) {
+    consultationContainer.style.display = method === 'Consultation' ? 'block' : 'none';
+  }
 
   if (method !== 'Skip Validation') {
     document.getElementById('skip-validation-reason').value = '';
@@ -1681,6 +1649,13 @@ function handleValidationChange() {
   }
   if (method !== 'Low validation') {
     document.getElementById('low-validation-reason').value = '';
+  }
+
+  if (method === 'Consultation') {
+    populateTransferDepartments('consultation-department');
+  } else {
+    document.getElementById('consultation-with').value = '';
+    document.getElementById('consultation-department').value = '';
   }
 
   const step1NextBtn = document.getElementById('step1-next-btn');
@@ -2203,12 +2178,11 @@ function generateNote() {
   }
 
   // Validate call handling fields
-  if (callHandling === 'Consultation') {
+  if (isConsultation()) {
     const consultWith = document.getElementById('consultation-with').value.trim();
     const consultDept = document.getElementById('consultation-department').value;
-    const consultReason = document.getElementById('consultation-reason').value;
-    if (!consultWith || !consultDept || !consultReason) {
-      alert('Please complete Consultation fields: Consulted With, Department, and Reason.');
+    if (!consultWith || !consultDept) {
+      alert('Please complete Consultation fields: Consulted With and Department.');
       return;
     }
   }
@@ -2293,17 +2267,14 @@ function generateNote() {
       mandatoryLines.push('System Issue Type: ' + systemIssue);
     }
   }
-  
-  if (callHandling === 'Consultation') {
+
+  if (isConsultation()) {
     const consultWith = document.getElementById('consultation-with').value.trim();
     const consultDept = document.getElementById('consultation-department').value;
-    const consultReason = document.getElementById('consultation-reason').value;
-    mandatoryLines.push('Call Handling: Consultation');
     mandatoryLines.push('Consulted With: ' + consultWith);
     mandatoryLines.push('Consultation Department: ' + consultDept);
-    mandatoryLines.push('Consultation Reason: ' + consultReason);
   }
-  
+
   sections.push({ heading: 'MANDATORY DETAILS', lines: mandatoryLines });
 
   if (unableToValidate) {
@@ -2385,7 +2356,78 @@ function downloadNote() {
 
 function clearAll() {
   if (!confirm('Clear all fields?')) return;
-  location.reload();
+  resetCallForm();
+}
+
+function resetCallForm() {
+  // Reset plain text / date / time / textarea inputs
+  const textIds = [
+    'service-id','mandatory-cust-name','mobile-contact','ref-no','extra',
+    'low-validation-reason','previous-employee-ein','skip-manager-ouc',
+    'consultation-with','misroute-reason','ts-steps','unable-transfer-context','eng-date'
+  ];
+  textIds.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+  // Reset selects
+  const selectIds = [
+    'validation-method','skip-validation-reason','system-issue-type',
+    'unable-to-validate-reason','consultation-department',
+    'call-handling','product','fault-type','outcome','followup','medallia'
+  ];
+  selectIds.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+  // Reset hidden badge-backed fields
+  ['misroute-department','fault-since','affected'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+
+  // Clear every active badge selection
+  document.querySelectorAll('#call-notes-section .badge-option.active, #call-notes-section .badge-choice.active, #call-notes-section .badge.active')
+    .forEach(b => b.classList.remove('active'));
+
+  // Reset call date/time back to now
+  const now = new Date();
+  document.getElementById('call-date').value = now.toISOString().split('T')[0];
+  document.getElementById('call-time').value = now.toTimeString().slice(0,5);
+
+  // Hide all conditional field containers
+  [
+    'skip-validation-container','low-validation-reason-container','unable-to-validate-reason-container',
+    'consultation-fields-container','employee-ein-container','system-issue-container',
+    'misroute-group','fault-type-container','fault-extra-container','fault-start-container',
+    'affected-users-container','engineer-date-container','unable-transfer-context-container'
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  // Reset JS state
+  misroutedActive = false;
+
+  // Re-render all badge groups so they reflect the cleared state
+  renderProductBadges();
+  renderFaultTypeBadges('');
+  renderFlowBadges();
+  renderGuidedFlow();
+  renderAdditionalActions();
+  renderDepartmentBadges();
+  renderOutcomeBadges();
+  renderFollowupBadges();
+  renderMedalliaBadges();
+  refreshFlowVisibility();
+
+  // Reset step button labels
+  const step1NextBtn = document.getElementById('step1-next-btn');
+  if (step1NextBtn) step1NextBtn.textContent = 'Next: Call Handling';
+  const step3NextBtn = document.getElementById('step3-next-btn');
+  if (step3NextBtn) step3NextBtn.textContent = 'Next: Outcome';
+
+  // Hide generated output
+  document.getElementById('output-card').classList.remove('visible');
+  document.getElementById('copy-btn').classList.remove('visible');
+  document.getElementById('download-btn').classList.remove('visible');
+  document.getElementById('note-output').textContent = '';
+  document.getElementById('note-meta').textContent = '';
+
+  // Back to Step 1
+  goToStep(1);
 }
 
 function toggleFormType() {
@@ -2542,6 +2584,14 @@ function validateStep(step) {
         return false;
       }
     }
+    if (validation === 'Consultation') {
+      const consultWith = document.getElementById('consultation-with').value.trim();
+      const consultDept = document.getElementById('consultation-department').value;
+      if (!consultWith || !consultDept) {
+        alert('Please complete all Consultation fields:\n• Consulted With\n• Consultation Department');
+        return false;
+      }
+    }
     return true;
   }
 
@@ -2552,15 +2602,7 @@ function validateStep(step) {
       return false;
     }
 
-    if (callHandling === 'Consultation') {
-      const consultWith = document.getElementById('consultation-with').value.trim();
-      const consultDept = document.getElementById('consultation-department').value;
-      const consultReason = document.getElementById('consultation-reason').value;
-      if (!consultWith || !consultDept || !consultReason) {
-        alert('Please complete all Consultation fields');
-        return false;
-      }
-    } else if (callHandling === 'Misrouted Call') {
+    if (callHandling === 'Misrouted Call') {
       const department = document.getElementById('misroute-department').value;
       const misrouteReason = document.getElementById('misroute-reason').value.trim();
       if (!department || !misrouteReason) {
@@ -2573,9 +2615,9 @@ function validateStep(step) {
 
   if (step === 3) {
     const callHandling = document.getElementById('call-handling').value;
-    
+
     // If Consultation, skip fault details validation
-    if (callHandling === 'Consultation') {
+    if (isConsultation()) {
       return true;
     }
 
