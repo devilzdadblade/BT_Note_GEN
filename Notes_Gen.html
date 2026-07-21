@@ -510,6 +510,16 @@
         <div class="card-title">User Notes</div>
         <p class="notes-text">To use the latest features copy the link and paste it to another tab. This way all the new updates will be available to you. Recommend doing this every 4 hours, as it is getting rapidly updated.</p>
       </div>
+
+      <div class="card notes-card" style="margin-top:1.5rem;">
+        <div class="card-title">Scratchpad</div>
+        <p class="notes-text" style="margin-bottom:10px;">Jot things down or paste text here while you work — it's saved automatically.</p>
+        <textarea id="scratchpad" placeholder="Type or paste notes here..." style="min-height:160px;" oninput="saveScratchpad()"></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn-secondary" id="scratchpad-copy-btn" style="flex:1; padding:10px 14px; font-size:12px;" onclick="copyScratchpad()">Copy</button>
+          <button class="btn-secondary" style="flex:1; padding:10px 14px; font-size:12px;" onclick="clearScratchpad()">Clear</button>
+        </div>
+      </div>
     </aside>
 
     <div>
@@ -1002,6 +1012,48 @@ function updateLogCounter() {
     if (el) el.textContent = n;
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// SCRATCHPAD (free-form notepad in the sidebar)
+// ═══════════════════════════════════════════════════════════════════
+const SCRATCHPAD_KEY = 'bt_notes_scratchpad';
+
+function loadScratchpad() {
+  const el = document.getElementById('scratchpad');
+  if (!el) return;
+  try { el.value = localStorage.getItem(SCRATCHPAD_KEY) || ''; }
+  catch (e) { /* ignore */ }
+}
+
+function saveScratchpad() {
+  const el = document.getElementById('scratchpad');
+  if (!el) return;
+  try { localStorage.setItem(SCRATCHPAD_KEY, el.value); }
+  catch (e) { /* ignore - storage may be unavailable */ }
+}
+
+function copyScratchpad() {
+  const el = document.getElementById('scratchpad');
+  if (!el || !el.value) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = document.getElementById('scratchpad-copy-btn');
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = original, 2000);
+  });
+}
+
+function clearScratchpad() {
+  const el = document.getElementById('scratchpad');
+  if (!el) return;
+  if (!el.value.trim()) return;
+  if (!confirm('Clear the scratchpad?')) return;
+  el.value = '';
+  try { localStorage.removeItem(SCRATCHPAD_KEY); } catch (e) { /* ignore */ }
+}
+
+window.addEventListener('DOMContentLoaded', loadScratchpad);
 
 function downloadAllNotes() {
   const log = getLog();
