@@ -259,9 +259,9 @@
   textarea { resize: vertical; min-height: 56px; line-height: 1.4; }
   select option { background: var(--surface-solid); color: var(--text); }
 
-  .badge-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .badge-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
   .badge {
-    font-size: 12px; padding: 7px 14px; border-radius: 30px;
+    font-size: 11px; padding: 6px 12px; border-radius: 30px;
     background: var(--badge-bg); color: var(--bt-purple);
     border: 1px solid var(--badge-border); font-weight: 700; cursor: pointer;
     transition: background .15s, color .15s;
@@ -315,8 +315,27 @@
 
   .footer { text-align: center; margin: 0.75rem 0 0.25rem; color: var(--text-muted); font-size: 10px; opacity: .7; }
 
+  .step3-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    align-items: start;
+  }
+  .step3-columns .card {
+    margin-bottom: 0;
+  }
+
+  /* Safety net: if any single step's card genuinely has too much content
+     for the viewport, only that card scrolls internally — the rest of the
+     page (indicator, other cards, Back/Next controls) always stays put. */
+  .step-section .card {
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
+  }
+
   @media(max-width:650px) {
     .two-col, .three-col { grid-template-columns: 1fr; }
+    .step3-columns { grid-template-columns: 1fr; }
     .page-shell { grid-template-columns: 1fr; }
     .notes-sidebar { position: static; }
     .action-row { flex-direction: column; width: 100%; }
@@ -736,6 +755,7 @@
 
     <!-- STEP 3: FAULT DETAILS or TRANSFER DETAILS -->
     <div class="step-section" id="step-3" data-step="3">
+    <div class="step3-columns">
     <div class="card" id="fault-details-card">
       <div class="card-title">Step 3: Fault Details</div>
 
@@ -802,8 +822,9 @@
 
       <div class="field">
         <label>Notes / Steps Taken</label>
-        <textarea id="ts-steps" placeholder="Click badges above — or type freely"></textarea>
+        <textarea id="ts-steps" placeholder="Click badges above — or type freely" style="min-height:44px;"></textarea>
       </div>
+    </div>
     </div>
 
     <div class="step-controls" id="step-3-controls">
@@ -817,38 +838,37 @@
     <div class="card" id="outcome-next-steps-card">
       <div class="card-title">Outcome &amp; Next Steps</div>
 
+      <div class="field">
+        <label>Call Outcome</label>
+        <div id="outcome-badges" class="badge-grid"></div>
+        <select id="outcome" style="display:none"></select>
+      </div>
+
       <div class="two-col">
-        <div class="field">
-          <label>Call Outcome</label>
-          <div id="outcome-badges" class="badge-grid"></div>
-          <select id="outcome" style="display:none"></select>
-        </div>
         <div class="field">
           <label>Reference Number</label>
           <input type="text" id="ref-no" placeholder="Fault ref / case ID / OR ref">
         </div>
-      </div>
-
-      <div class="two-col">
         <div class="field" id="engineer-date-container" style="display:none;">
           <label>Engineer Visit Date *</label>
           <input type="date" id="eng-date">
         </div>
-        <div class="field">
-          <label>Follow-up / Next Action</label>
-          <div id="followup-badges" class="badge-grid"></div>
-          <select id="followup" style="display:none"></select>
-        </div>
+      </div>
+
+      <div class="field">
+        <label>Follow-up / Next Action</label>
+        <div id="followup-badges" class="badge-grid"></div>
+        <select id="followup" style="display:none"></select>
       </div>
 
       <div class="field">
         <label>Additional Context</label>
-        <textarea id="extra" placeholder="Any extra context"></textarea>
+        <textarea id="extra" placeholder="Any extra context" style="min-height:44px;"></textarea>
       </div>
 
       <div class="field" id="unable-transfer-context-container" style="display:none;">
         <label>Unable to transfer details</label>
-        <textarea id="unable-transfer-context" placeholder="Describe what was done and why transfer could not be completed"></textarea>
+        <textarea id="unable-transfer-context" placeholder="Describe what was done and why transfer could not be completed" style="min-height:44px;"></textarea>
       </div>
 
       <div class="field">
