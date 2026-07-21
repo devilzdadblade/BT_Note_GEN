@@ -86,9 +86,11 @@
     font-family: 'BT Curve', Inter, system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
     color: var(--text);
-    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     position: relative;
-    overflow-x: hidden;
+    overflow: hidden;
     transition: background .25s ease, color .25s ease;
   }
 
@@ -117,14 +119,13 @@
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255,255,255,.12);
-    height: 64px;
-    padding: 0 2rem;
+    height: 48px;
+    padding: 0 1.5rem;
     display: flex;
     align-items: center;
     gap: 12px;
     color: white;
-    position: sticky;
-    top: 0;
+    flex-shrink: 0;
     z-index: 100;
     transition: background .25s ease;
   }
@@ -132,15 +133,15 @@
   .topbar-brand { display: flex; align-items: center; gap: 14px; }
 
   .bt-logo {
-    width: 42px; height: 42px;
+    width: 32px; height: 32px;
     background: white; color: var(--bt-purple);
     border-radius: 50%; display: flex;
     align-items: center; justify-content: center;
-    font-weight: 900; flex-shrink: 0;
+    font-weight: 900; font-size: 13px; flex-shrink: 0;
   }
 
-  .topbar-title { font-weight: 800; font-size: 16px; }
-  .topbar-sub { font-size: 12px; opacity: .75; }
+  .topbar-title { font-weight: 800; font-size: 14px; }
+  .topbar-sub { font-size: 10px; opacity: .75; }
 
   .topbar-right {
     margin-left: auto;
@@ -169,18 +170,26 @@
   .log-pill.danger { background: rgba(230,0,80,.18); border-color: rgba(230,0,80,.4); }
   .log-pill.danger:hover { background: rgba(230,0,80,.35); }
 
-  .page { max-width: 1200px; margin: auto; padding: 2.5rem 1.5rem 5rem; }
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
 
   .page-shell {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 1rem;
     align-items: start;
   }
 
   .notes-sidebar {
     position: sticky;
-    top: 88px;
+    top: 0;
   }
 
   .notes-sidebar .card {
@@ -188,12 +197,12 @@
   }
 
   .notes-card .card-title {
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.5rem;
   }
 
   .notes-text {
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 12px;
+    line-height: 1.45;
     color: var(--text-muted);
   }
 
@@ -203,39 +212,39 @@
     -webkit-backdrop-filter: blur(var(--blur));
     border: 1px solid var(--surface-border);
     border-radius: var(--radius-lg);
-    padding: 2rem;
-    margin-bottom: 1.5rem;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.75rem;
     box-shadow: var(--shadow-md);
     transition: background .25s ease, border-color .25s ease;
   }
 
   .card-title {
-    font-size: 12px; font-weight: 900;
+    font-size: 11px; font-weight: 900;
     text-transform: uppercase; letter-spacing: .1em;
-    color: var(--bt-purple); margin-bottom: 1.25rem;
+    color: var(--bt-purple); margin-bottom: 0.75rem;
     display: flex; align-items: center; gap: 8px;
   }
   .card-title::before {
-    content: ""; width: 4px; height: 16px;
+    content: ""; width: 4px; height: 14px;
     background: linear-gradient(180deg, var(--bt-purple), var(--accent));
     border-radius: 4px;
   }
 
-  .two-col   { display: grid; grid-template-columns: 1fr 1fr;     gap: 20px; }
-  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .two-col   { display: grid; grid-template-columns: 1fr 1fr;     gap: 14px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 
-  .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
   .field.full { grid-column: 1 / -1; }
 
   label {
-    font-size: 12px; font-weight: 800;
+    font-size: 11px; font-weight: 800;
     color: var(--text-muted);
     text-transform: uppercase; letter-spacing: .05em;
   }
 
   input, select, textarea {
-    font-family: inherit; font-size: 14px; font-weight: 500;
-    padding: 12px 14px; border-radius: var(--radius);
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    padding: 9px 12px; border-radius: var(--radius);
     border: 1.5px solid var(--input-border);
     outline: none; width: 100%; background: var(--input-bg);
     color: var(--text);
@@ -247,7 +256,7 @@
     border-color: var(--border-focus);
     box-shadow: 0 0 0 4px var(--focus-ring);
   }
-  textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  textarea { resize: vertical; min-height: 56px; line-height: 1.4; }
   select option { background: var(--surface-solid); color: var(--text); }
 
   .badge-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
@@ -262,13 +271,13 @@
 
   .action-row {
     display: flex; flex-wrap: wrap;
-    gap: 12px; margin-top: 2rem; align-items: center;
+    gap: 10px; margin-top: 0.85rem; align-items: center;
   }
 
   button {
     cursor: pointer; border-radius: 8px; font-weight: 700;
-    padding: 12px 22px; border: none;
-    font-family: inherit; font-size: 14px;
+    padding: 10px 18px; border: none;
+    font-family: inherit; font-size: 13px;
     transition: opacity .15s;
   }
   button:hover { opacity: .88; }
@@ -292,7 +301,7 @@
     -webkit-backdrop-filter: blur(var(--blur));
     border: 2px solid var(--bt-purple);
     border-radius: var(--radius-lg);
-    padding: 2rem; margin-top: 2rem; white-space: pre-wrap;
+    padding: 1.25rem; margin-top: 0.85rem; white-space: pre-wrap;
     color: var(--text);
     box-shadow: var(--shadow-md);
   }
@@ -300,11 +309,11 @@
   .output-header {
     display: flex; justify-content: space-between;
     border-bottom: 2px dashed var(--focus-ring);
-    padding-bottom: 1rem; margin-bottom: 1rem;
+    padding-bottom: 0.6rem; margin-bottom: 0.6rem;
   }
   .output-label { color: var(--bt-purple); font-weight: 900; font-size: 13px; text-transform: uppercase; }
 
-  .footer { text-align: center; margin: 3rem 0; color: var(--text-muted); font-size: 13px; }
+  .footer { text-align: center; margin: 0.75rem 0 0.25rem; color: var(--text-muted); font-size: 10px; opacity: .7; }
 
   @media(max-width:650px) {
     .two-col, .three-col { grid-template-columns: 1fr; }
@@ -315,20 +324,20 @@
     button      { width: 100%; justify-content: center; }
   }
 
-  .badge-select { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge-select { display: flex; flex-wrap: wrap; gap: 6px; }
   .badge-option {
-    font-size: 12px; padding: 8px 14px; border-radius: 30px;
+    font-size: 11px; padding: 6px 12px; border-radius: 30px;
     background: var(--badge-bg); border: 1px solid var(--badge-border);
     color: var(--bt-purple); font-weight: 700; cursor: pointer;
     transition: background .15s, color .15s;
   }
   .badge-option.active { background: var(--bt-purple); color: #fff; }
 
-  .badge-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .badge-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .badge-choice {
-    padding: 8px 14px; border: 1px solid var(--badge-border); border-radius: 999px;
+    padding: 6px 12px; border: 1px solid var(--badge-border); border-radius: 999px;
     background: var(--badge-bg); color: var(--bt-purple); font-weight: 700;
-    cursor: pointer; font-size: 12px;
+    cursor: pointer; font-size: 11px;
     transition: background .15s, color .15s;
   }
   .badge-choice.active { background: var(--bt-purple); color: #fff; }
@@ -349,21 +358,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    margin-bottom: 2rem;
+    gap: 10px;
+    margin-bottom: 0.85rem;
     flex-wrap: wrap;
   }
   .step-badge {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: var(--step-badge-bg);
     color: var(--text-muted);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 12px;
     transition: background .3s, color .3s;
   }
   .step-badge.active {
@@ -376,7 +385,7 @@
     color: white;
   }
   .step-connector {
-    width: 24px;
+    width: 20px;
     height: 2px;
     background: var(--step-badge-bg);
   }
@@ -398,11 +407,11 @@
 
   .step-controls {
     display: flex;
-    gap: 12px;
-    margin-top: 2rem;
+    gap: 10px;
+    margin-top: 0.85rem;
     justify-content: space-between;
     background: transparent;
-    padding-top: 1rem;
+    padding-top: 0.75rem;
     border-top: 1px solid var(--surface-border);
   }
   .step-section#step-3 .step-controls,
@@ -514,7 +523,7 @@
       <div class="card notes-card" style="margin-top:1.5rem;">
         <div class="card-title">Scratchpad</div>
         <p class="notes-text" style="margin-bottom:10px;">Jot things down or paste text here while you work — it's saved automatically.</p>
-        <textarea id="scratchpad" placeholder="Type or paste notes here..." style="min-height:160px;" oninput="saveScratchpad()"></textarea>
+        <textarea id="scratchpad" placeholder="Type or paste notes here..." style="min-height:90px;" oninput="saveScratchpad()"></textarea>
         <div style="display:flex; gap:8px; margin-top:10px;">
           <button class="btn-secondary" id="scratchpad-copy-btn" style="flex:1; padding:10px 14px; font-size:12px;" onclick="copyScratchpad()">Copy</button>
           <button class="btn-secondary" style="flex:1; padding:10px 14px; font-size:12px;" onclick="clearScratchpad()">Clear</button>
@@ -523,7 +532,7 @@
     </aside>
 
     <div>
-      <div style="margin-bottom:2rem; display:flex; justify-content:center;">
+      <div style="margin-bottom:0.75rem; display:flex; justify-content:center;">
     <select id="form-type-selector" onchange="toggleFormType()"
       style="width:auto; border:2px solid var(--bt-purple); color:var(--bt-purple); font-weight:800;">
       <option value="call">Call Notes Form</option>
@@ -856,7 +865,7 @@
     </div>
     </div>
 
-    <div class="action-row" style="margin-top:3rem;">
+    <div class="action-row" style="margin-top:0.85rem;">
       <button class="btn-secondary" onclick="clearAll()">Clear Form</button>
       <button class="btn-log"       onclick="downloadAllNotes()">Download All (<span id="log-count2">0</span>)</button>
       <div class="post-btns">
