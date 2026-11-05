@@ -768,6 +768,7 @@
           <option value="FTTC Broadband"       data-category="broadband">FTTC Broadband</option>
           <option value="SOGEA"                data-category="broadband">SOGEA</option>
           <option value="ADSL Broadband"       data-category="broadband">ADSL Broadband</option>
+          <option value="SoADSL Broadband"     data-category="broadband">SoADSL Broadband</option>
           <option value="EFM / Ethernet"       data-category="broadband">EFM / Ethernet</option>
           <option value="BTnet"                data-category="network">BTnet</option>
           <option value="3rd Party Provider"   data-category="thirdparty">3rd Party Provider</option>
@@ -871,10 +872,17 @@
         <textarea id="unable-transfer-context" placeholder="Describe what was done and why transfer could not be completed" style="min-height:44px;"></textarea>
       </div>
 
-      <div class="field">
-        <label>Medallia Survey Positioned</label>
-        <div id="medallia-badges" class="badge-grid"></div>
-        <select id="medallia" style="display:none"></select>
+      <div class="two-col">
+        <div class="field">
+          <label>Medallia Survey Positioned</label>
+          <div id="medallia-badges" class="badge-grid"></div>
+          <select id="medallia" style="display:none"></select>
+        </div>
+        <div class="field">
+          <label>RIKI Sent</label>
+          <div id="riki-badges" class="badge-grid"></div>
+          <select id="riki-sent" style="display:none"></select>
+        </div>
       </div>
 
     </div>
@@ -888,6 +896,10 @@
     <div class="action-row" style="margin-top:0.85rem;">
       <button class="btn-secondary" onclick="clearAll()">Clear Form</button>
       <button class="btn-log"       onclick="downloadAllNotes()">Download All (<span id="log-count2">0</span>)</button>
+      <div class="post-btns">
+        <button class="btn-copy"     id="copy-btn"     onclick="copyNote()">Copy Note</button>
+        <button class="btn-download" id="download-btn" onclick="downloadNote()">Save Note</button>
+      </div>
     </div>
 
     <div class="output-card" id="output-card">
@@ -896,10 +908,6 @@
         <span id="note-meta"></span>
       </div>
       <div id="note-output"></div>
-      <div class="post-btns" style="margin-left:0; margin-top:1rem; padding-top:1rem; border-top:1px dashed var(--focus-ring);">
-        <button class="btn-copy"     id="copy-btn"     onclick="copyNote()">Copy Note</button>
-        <button class="btn-download" id="download-btn" onclick="downloadNote()">Save Note</button>
-      </div>
     </div>
 
   </div>
@@ -1301,6 +1309,98 @@ function populateTransferDepartments(selectId) {
 // TROUBLESHOOTING FLOWS
 // ═══════════════════════════════════════════════════════════════════
 const TROUBLESHOOTING_FLOWS = {
+  'ADSL Broadband': {
+    'total loss of broadband service': [
+      'Check MSO / Area Outage',
+      'Verify Account Status',
+      'Check DSL Line Sync / Noise Margin',
+      'Inspect NTE / Master Socket',
+      'Power Cycle Modem',
+      'Run BQT / Line Test',
+      'Raise Openreach Fault'
+    ],
+    'slow broadband speeds': [
+      'Run Speed Test',
+      'Check Line Stats (SNR / Attenuation)',
+      'Check Filters / Internal Wiring',
+      'Test via Ethernet',
+      'Test from Master Socket',
+      'Compare Against Estimated Speed',
+      'Run BQT / Line Test',
+      'Raise Openreach Fault'
+    ],
+    'intermittent broadband connectivity': [
+      'Check MSO / Area Outage',
+      'Check Line Stats (CRC / Dropouts)',
+      'Inspect NTE / Master Socket',
+      'Check Microfilters',
+      'Test Alternative Device',
+      'BQT During Fault Window',
+      'Raise Openreach Fault - Intermittent'
+    ],
+    'no sync on the line': [
+      'Check MSO / Area Outage',
+      'Check DSL Light on Modem',
+      'Inspect NTE / Master Socket',
+      'Check Filters / Internal Wiring',
+      'Run BQT / Line Test',
+      'Raise Openreach Fault - No Sync'
+    ],
+    'WiFi issues reported': [
+      'Confirm Issue is WiFi Not Broadband',
+      'Run Wired Speed Test',
+      'Check WiFi Signal at Location',
+      'Reboot Hub',
+      'Check for WiFi Interference',
+      'Advise Hub Placement / WiFi Disc'
+    ]
+  },
+  'SoADSL Broadband': {
+    'total loss of broadband service': [
+      'Check MSO / Area Outage',
+      'Verify Account Status',
+      'Check SoADSL Service Profile / Line Setup',
+      'Inspect NTE / Master Socket',
+      'Power Cycle Modem',
+      'Run BQT / Line Test',
+      'Raise Openreach Fault'
+    ],
+    'slow broadband speeds': [
+      'Run Speed Test',
+      'Check Line Stats (SNR / Attenuation)',
+      'Check SoADSL Profile / Sync Settings',
+      'Test via Ethernet',
+      'Test from Master Socket',
+      'Compare Against Estimated Speed',
+      'Run BQT / Line Test',
+      'Raise Openreach Fault'
+    ],
+    'intermittent broadband connectivity': [
+      'Check MSO / Area Outage',
+      'Check Line Stats (CRC / Dropouts)',
+      'Check SoADSL Profile / Stability',
+      'Inspect NTE / Master Socket',
+      'Check Microfilters',
+      'BQT During Fault Window',
+      'Raise Openreach Fault - Intermittent'
+    ],
+    'no sync on the line': [
+      'Check MSO / Area Outage',
+      'Check DSL Light on Modem',
+      'Verify SoADSL Service Profile',
+      'Inspect NTE / Master Socket',
+      'Run BQT / Line Test',
+      'Raise Openreach Fault - No Sync'
+    ],
+    'WiFi issues reported': [
+      'Confirm Issue is WiFi Not Broadband',
+      'Run Wired Speed Test',
+      'Check WiFi Signal at Location',
+      'Reboot Hub',
+      'Check for WiFi Interference',
+      'Advise Hub Placement / WiFi Disc'
+    ]
+  },
   broadband: {
     'total loss of broadband service': [
       'Check MSO / Area Outage',
@@ -1828,6 +1928,7 @@ const PRODUCT_OPTIONS = [
   { value: 'FTTC Broadband',          category: 'broadband', label: 'FTTC' },
   { value: 'SOGEA',                   category: 'broadband', label: 'SOGEA' },
   { value: 'ADSL Broadband',          category: 'broadband', label: 'ADSL' },
+  { value: 'SoADSL Broadband',        category: 'broadband', label: 'SoADSL' },
   { value: 'EFM / Ethernet',          category: 'broadband', label: 'Ethernet' },
   { value: 'BTnet',                   category: 'network',   label: 'BTnet' },
   { value: '3rd Party Provider',      category: 'thirdparty',label: '3rd Party Provider' },
@@ -2005,13 +2106,16 @@ function renderGuidedFlow() {
   const wrap = document.getElementById('guided-flow');
   if (!wrap) return;
   const sel = document.getElementById('product');
-  const category = sel.options[sel.selectedIndex]?.getAttribute('data-category') || '';
+  const product = sel?.value || '';
+  const category = sel?.options[sel.selectedIndex]?.getAttribute('data-category') || '';
   const fault = document.getElementById('fault-type').value;
   if (!category || !fault) {
     wrap.innerHTML = '<span class="badge">Select a product and fault type to see guided steps.</span>';
     return;
   }
-  const steps = TROUBLESHOOTING_FLOWS[category]?.[fault] || [];
+  const steps = TROUBLESHOOTING_FLOWS[product]?.[fault]
+    || TROUBLESHOOTING_FLOWS[category]?.[fault]
+    || [];
   wrap.innerHTML = steps.map(s =>
     `<span class="badge" onclick="addBadge('${s.replace(/'/g,"\\'")}',this)">` + s + `</span>`
   ).join('');
@@ -2127,6 +2231,12 @@ const MEDALLIA_OPTIONS = [
   { value: 'Not applicable', label: 'Not applicable' }
 ];
 
+const RIKI_OPTIONS = [
+  { value: 'Yes',            label: 'Yes' },
+  { value: 'No',             label: 'No' },
+  { value: 'Not applicable', label: 'Not applicable' }
+];
+
 function populateSelectFromOptions(selectId, options) {
   const sel = document.getElementById(selectId);
   if (!sel) return;
@@ -2212,13 +2322,33 @@ function setMedallia(value, el) {
   if (el) el.classList.add('active');
 }
 
+function renderRikiBadges() {
+  const wrap = document.getElementById('riki-badges');
+  const sel  = document.getElementById('riki-sent');
+  if (!wrap || !sel) return;
+  wrap.innerHTML = RIKI_OPTIONS.map(item => {
+    const active = sel.value === item.value ? ' active' : '';
+    return `<span class="badge-choice${active}" onclick="setRiki('${item.value}',this)">${item.label}</span>`;
+  }).join('');
+}
+
+function setRiki(value, el) {
+  const sel = document.getElementById('riki-sent');
+  if (!sel) return;
+  sel.value = value;
+  document.querySelectorAll('#riki-badges .badge-choice').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   populateSelectFromOptions('outcome', OUTCOME_OPTIONS);
   populateSelectFromOptions('followup', FOLLOWUP_OPTIONS);
   populateSelectFromOptions('medallia', MEDALLIA_OPTIONS);
+  populateSelectFromOptions('riki-sent', RIKI_OPTIONS);
   renderOutcomeBadges();
   renderFollowupBadges();
   renderMedalliaBadges();
+  renderRikiBadges();
   updateLogCounter();
 });
 
@@ -2291,6 +2421,7 @@ function generateNote() {
   const followup= document.getElementById('followup').value;
   const extra   = document.getElementById('extra').value.trim();
   const medallia= document.getElementById('medallia').value;
+  const riki    = document.getElementById('riki-sent').value;
   const unableTransferDetails = document.getElementById('unable-transfer-context')?.value.trim();
 
   // Use saved session Agent ID if present, otherwise fall back to input value
@@ -2403,6 +2534,7 @@ function generateNote() {
     if (followup) outcomeLines.push('Follow-up: ' + followup);
     if (extra)    outcomeLines.push('Additional Context: ' + extra);
     if (medallia) outcomeLines.push('Medallia Survey Positioned: ' + medallia);
+    if (riki)    outcomeLines.push('RIKI Sent: ' + riki);
     sections.push({ heading: 'OUTCOME / NEXT STEPS', lines: outcomeLines });
   }
 
@@ -2453,7 +2585,7 @@ function resetCallForm() {
   const selectIds = [
     'validation-method','skip-validation-reason','system-issue-type',
     'unable-to-validate-reason','consultation-department',
-    'call-handling','product','fault-type','outcome','followup','medallia'
+    'call-handling','product','fault-type','outcome','followup','medallia','riki-sent'
   ];
   selectIds.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 
@@ -2492,6 +2624,7 @@ function resetCallForm() {
   renderOutcomeBadges();
   renderFollowupBadges();
   renderMedalliaBadges();
+  renderRikiBadges();
   refreshFlowVisibility();
 
   // Reset step button labels
