@@ -188,6 +188,7 @@
     gap: 1rem; margin-bottom: .75rem;
   }
   .notes-manager-header h2 { margin: 0; color: var(--bt-purple); font-size: 16px; }
+  .notes-manager-header-actions { display: flex; gap: 8px; align-items: center; }
   .notes-manager-search { margin-bottom: .75rem; }
   .notes-manager-list { overflow-y: auto; min-height: 100px; }
   .saved-note {
@@ -1016,7 +1017,10 @@
   <section class="notes-manager-panel" role="dialog" aria-modal="true" aria-labelledby="notes-manager-title">
     <div class="notes-manager-header">
       <h2 id="notes-manager-title">Saved Notes (<span id="notes-manager-count">0</span>)</h2>
-      <button type="button" class="btn-secondary" onclick="closeNotesManager()" aria-label="Close saved notes">Close</button>
+      <div class="notes-manager-header-actions">
+        <button type="button" class="btn-primary" onclick="downloadAllNotes()">Download All Notes</button>
+        <button type="button" class="btn-secondary" onclick="closeNotesManager()" aria-label="Close saved notes">Close</button>
+      </div>
     </div>
     <input id="notes-manager-search" class="notes-manager-search" type="search"
       placeholder="Search customer name, account or service reference..."
