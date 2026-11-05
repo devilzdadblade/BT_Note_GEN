@@ -896,10 +896,6 @@
     <div class="action-row" style="margin-top:0.85rem;">
       <button class="btn-secondary" onclick="clearAll()">Clear Form</button>
       <button class="btn-log"       onclick="downloadAllNotes()">Download All (<span id="log-count2">0</span>)</button>
-      <div class="post-btns">
-        <button class="btn-copy"     id="copy-btn"     onclick="copyNote()">Copy Note</button>
-        <button class="btn-download" id="download-btn" onclick="downloadNote()">Save Note</button>
-      </div>
     </div>
 
     <div class="output-card" id="output-card">
@@ -908,6 +904,10 @@
         <span id="note-meta"></span>
       </div>
       <div id="note-output"></div>
+      <div class="post-btns" style="margin-top:0.85rem;">
+        <button class="btn-copy"     id="copy-btn"     onclick="copyNote()">Copy Note</button>
+        <button class="btn-download" id="download-btn" onclick="downloadNote()">Save Note</button>
+      </div>
     </div>
 
   </div>
@@ -948,10 +948,6 @@
     <div class="action-row">
       <button class="btn-primary"   onclick="generateComplaintNote()">Generate Complaint</button>
       <button class="btn-secondary" onclick="clearComplaint()">Clear Form</button>
-      <div class="post-btns">
-        <button class="btn-copy"     id="comp-copy-btn"     onclick="copyComplaint()">Copy Note</button>
-        <button class="btn-download" id="comp-download-btn" onclick="downloadComplaint()">Download</button>
-      </div>
     </div>
 
     <div class="output-card" id="comp-output-card">
@@ -959,6 +955,10 @@
         <span class="output-label">Generated Complaint Note</span>
       </div>
       <div id="comp-note-output"></div>
+      <div class="post-btns" style="margin-top:0.85rem;">
+        <button class="btn-copy"     id="comp-copy-btn"     onclick="copyComplaint()">Copy Note</button>
+        <button class="btn-download" id="comp-download-btn" onclick="downloadComplaint()">Download</button>
+      </div>
     </div>
     </div>
   </div>
