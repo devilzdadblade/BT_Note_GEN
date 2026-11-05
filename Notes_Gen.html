@@ -278,9 +278,40 @@
 
   .two-col   { display: grid; grid-template-columns: 1fr 1fr;     gap: 14px; }
   .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .complaint-fields-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+  }
 
   .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
   .field.full { grid-column: 1 / -1; }
+  .complaint-toggle {
+    min-height: 38px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface-solid); border: 1.5px solid var(--input-border);
+    color: var(--text-muted); padding: 8px 12px;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .complaint-toggle[aria-checked="true"] {
+    background: var(--bt-purple-light); border-color: var(--bt-purple); color: var(--bt-purple);
+  }
+  .complaint-toggle:focus-visible {
+    outline: 2px solid var(--bt-purple); outline-offset: 2px;
+  }
+  .complaint-toggle-track {
+    width: 40px; height: 22px; display: flex; align-items: center;
+    padding: 3px; border-radius: 999px; background: var(--input-border);
+    transition: background .15s; flex-shrink: 0;
+  }
+  .complaint-toggle-knob {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: white; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transform: translateX(0); transition: transform .15s;
+  }
+  .complaint-toggle[aria-checked="true"] .complaint-toggle-track {
+    background: var(--bt-purple);
+  }
+  .complaint-toggle[aria-checked="true"] .complaint-toggle-knob {
+    transform: translateX(18px);
+  }
 
   label {
     font-size: 11px; font-weight: 800;
@@ -381,6 +412,7 @@
 
   @media(max-width:650px) {
     .two-col, .three-col { grid-template-columns: 1fr; }
+    .complaint-fields-grid { grid-template-columns: 1fr; }
     .step3-columns { grid-template-columns: 1fr; }
     .page-shell { grid-template-columns: 1fr; }
     .notes-sidebar { position: static; }
@@ -598,14 +630,6 @@
     </aside>
 
     <div>
-      <div style="margin-bottom:0.75rem; display:flex; justify-content:center;">
-    <select id="form-type-selector" onchange="toggleFormType()"
-      style="width:auto; border:2px solid var(--bt-purple); color:var(--bt-purple); font-weight:800;">
-      <option value="call">Call Notes Form</option>
-      <option value="complaint">Complaint Notes Form</option>
-    </select>
-  </div>
-
   <div id="call-notes-section">
 
     <!-- STEP INDICATOR -->
@@ -919,7 +943,7 @@
         <textarea id="unable-transfer-context" placeholder="Describe what was done and why transfer could not be completed" style="min-height:44px;"></textarea>
       </div>
 
-      <div class="two-col">
+      <div class="three-col">
         <div class="field">
           <label>Medallia Survey Positioned</label>
           <div id="medallia-badges" class="badge-grid"></div>
@@ -929,6 +953,68 @@
           <label>RIKI Sent</label>
           <div id="riki-badges" class="badge-grid"></div>
           <select id="riki-sent" style="display:none"></select>
+        </div>
+        <div class="field">
+          <label for="complaint-toggle">Complaint Details</label>
+          <button type="button" class="complaint-toggle" id="complaint-toggle"
+            role="switch" aria-checked="false" onclick="toggleComplaintDetails()">
+            <span id="complaint-toggle-label">Off</span>
+            <span class="complaint-toggle-track" aria-hidden="true">
+              <span class="complaint-toggle-knob"></span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div id="complaint-details-fields" class="card" style="display:none;">
+        <div class="card-title">Complaint Details</div>
+        <div class="complaint-fields-grid">
+          <div class="field">
+            <label for="gatekeeping-name">Gatekeeping done by</label>
+            <input id="gatekeeping-name" type="text" value="Rajarshi Chakraborty">
+          </div>
+          <div class="field">
+            <label for="gatekeeping-ein">EIN</label>
+            <input id="gatekeeping-ein" type="text" value="614757857">
+          </div>
+          <div class="field" style="justify-content:end;">
+            <label aria-hidden="true">&nbsp;</label>
+            <button type="button" class="btn-secondary" onclick="saveGatekeepingForSession()">Save for Session</button>
+            <span id="gatekeeping-save-status" class="notes-text" aria-live="polite"></span>
+          </div>
+          <div class="field">
+            <label for="adr-employees">Number of Employees (ADR)</label>
+            <select id="adr-employees">
+              <option value="NA" selected>NA</option>
+              <option value="1-10">1-10</option>
+              <option value="11-50">11-50</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fec-pitched">Have you pitched for FEC?</label>
+            <select id="fec-pitched">
+              <option value="Yes" selected>Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fec-agreed">Customer agreed to resolve?</label>
+            <select id="fec-agreed">
+              <option value="No" selected>No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fec-reason">Why customer did not agree for FEC</label>
+            <select id="fec-reason">
+              <option value="Issue is not resolved" selected>Issue is not resolved</option>
+              <option value="Issue resolved">Issue resolved</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="kci-date">KCI Date</label>
+            <input id="kci-date" type="date" value="2026-11-06">
+          </div>
         </div>
       </div>
 
@@ -957,57 +1043,6 @@
       </div>
     </div>
 
-  </div>
-
-  <div id="complaint-notes-section" style="display:none;">
-    <div class="card">
-      <div class="card-title">Complaint Details</div>
-
-      <div class="two-col">
-        <div class="field">
-          <label>Customer Name / Account No.</label>
-          <input type="text" id="comp-name" placeholder="Customer name (Account No.)">
-        </div>
-        <div class="field">
-          <label>Complaint Reason</label>
-          <select id="comp-reason">
-            <option value="">— Select —</option>
-            <option value="Service down / Unacceptable delay">Service down / Unacceptable delay</option>
-            <option value="Billing / Charges dispute">Billing / Charges dispute</option>
-            <option value="Customer service / Agent behavior">Customer service / Agent behavior</option>
-            <option value="Missed engineer appointment">Missed engineer appointment</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Outcome / Requested Action</label>
-        <input type="text" id="comp-outcome">
-      </div>
-
-      <div class="field">
-        <label>Complaint Details</label>
-        <textarea id="comp-details"></textarea>
-      </div>
-    </div>
-
-    <div class="action-row">
-      <button class="btn-primary"   onclick="generateComplaintNote()">Generate Complaint</button>
-      <button class="btn-secondary" onclick="clearComplaint()">Clear Form</button>
-    </div>
-
-    <div class="output-card" id="comp-output-card">
-      <div class="output-header">
-        <span class="output-label">Generated Complaint Note</span>
-      </div>
-      <div id="comp-note-output"></div>
-      <div class="post-btns" style="margin-top:0.85rem;">
-        <button class="btn-copy"     id="comp-copy-btn"     onclick="copyComplaint()">Copy Note</button>
-        <button class="btn-download" id="comp-download-btn" onclick="downloadComplaint()">Download</button>
-      </div>
-    </div>
-    </div>
   </div>
 
 </div>
@@ -2560,6 +2595,49 @@ function setRiki(value, el) {
   if (el) el.classList.add('active');
 }
 
+const GATEKEEPING_SESSION_KEY = 'bt_notes_gatekeeping_session';
+
+function toggleComplaintDetails() {
+  const toggle = document.getElementById('complaint-toggle');
+  const fields = document.getElementById('complaint-details-fields');
+  const label = document.getElementById('complaint-toggle-label');
+  if (!toggle || !fields || !label) return;
+  const enabled = toggle.getAttribute('aria-checked') !== 'true';
+  toggle.setAttribute('aria-checked', String(enabled));
+  label.textContent = enabled ? 'On' : 'Off';
+  fields.style.display = enabled ? 'block' : 'none';
+}
+
+function loadGatekeepingForSession() {
+  const status = document.getElementById('gatekeeping-save-status');
+  try {
+    const saved = sessionStorage.getItem(GATEKEEPING_SESSION_KEY);
+    const values = saved
+      ? JSON.parse(saved)
+      : { name: 'Rajarshi Chakraborty', ein: '614757857' };
+    document.getElementById('gatekeeping-name').value =
+      typeof values.name === 'string' ? values.name : 'Rajarshi Chakraborty';
+    document.getElementById('gatekeeping-ein').value =
+      typeof values.ein === 'string' ? values.ein : '614757857';
+    if (status) status.textContent = saved ? 'Session values loaded.' : '';
+  } catch (error) {
+    console.error('Unable to load session Gatekeeping/EIN values.', error);
+    if (status) status.textContent = 'Could not load saved session values.';
+  }
+}
+
+function saveGatekeepingForSession() {
+  const name = document.getElementById('gatekeeping-name').value.trim();
+  const ein = document.getElementById('gatekeeping-ein').value.trim();
+  try {
+    sessionStorage.setItem(GATEKEEPING_SESSION_KEY, JSON.stringify({ name, ein }));
+    document.getElementById('gatekeeping-save-status').textContent = 'Saved for this browser session.';
+  } catch (error) {
+    console.error('Unable to save Gatekeeping/EIN values for this session.', error);
+    alert('Gatekeeping and EIN could not be saved for this browser session.');
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   populateSelectFromOptions('outcome', OUTCOME_OPTIONS);
   populateSelectFromOptions('followup', FOLLOWUP_OPTIONS);
@@ -2569,6 +2647,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderFollowupBadges();
   renderMedalliaBadges();
   renderRikiBadges();
+  loadGatekeepingForSession();
   updateLogCounter();
 });
 
@@ -2758,6 +2837,28 @@ function generateNote() {
     sections.push({ heading: 'OUTCOME / NEXT STEPS', lines: outcomeLines });
   }
 
+  if (document.getElementById('complaint-toggle')?.getAttribute('aria-checked') === 'true') {
+    const gatekeepingName = document.getElementById('gatekeeping-name').value.trim();
+    const gatekeepingEin = document.getElementById('gatekeeping-ein').value.trim();
+    const adrEmployees = document.getElementById('adr-employees').value;
+    const fecPitched = document.getElementById('fec-pitched').value;
+    const fecAgreed = document.getElementById('fec-agreed').value;
+    const fecReason = document.getElementById('fec-reason').value;
+    const kciDate = document.getElementById('kci-date').value;
+    const complaintLines = [];
+
+    if (gatekeepingName) complaintLines.push('Gatekeeping done by: ' + gatekeepingName);
+    if (gatekeepingEin) complaintLines.push('EIN: ' + gatekeepingEin);
+    if (adrEmployees) complaintLines.push('Number of Employees (ADR): ' + adrEmployees);
+    if (fecPitched) complaintLines.push('Have you pitched for FEC?: ' + fecPitched);
+    if (fecAgreed) complaintLines.push('Customer agreed to resolve?: ' + fecAgreed);
+    if (fecAgreed === 'No' && fecReason) {
+      complaintLines.push('Why customer did not agree for FEC: ' + fecReason);
+    }
+    if (kciDate) complaintLines.push('KCI Date: ' + fmtDate(kciDate));
+    sections.push({ heading: 'COMPLAINT DETAILS', lines: complaintLines });
+  }
+
   const finalNote = buildNoteSections(sections);
 
   document.getElementById('note-output').textContent = finalNote;
@@ -2845,6 +2946,14 @@ function resetCallForm() {
   renderFollowupBadges();
   renderMedalliaBadges();
   renderRikiBadges();
+  const complaintToggle = document.getElementById('complaint-toggle');
+  if (complaintToggle?.getAttribute('aria-checked') === 'true') toggleComplaintDetails();
+  document.getElementById('adr-employees').value = 'NA';
+  document.getElementById('fec-pitched').value = 'Yes';
+  document.getElementById('fec-agreed').value = 'No';
+  document.getElementById('fec-reason').value = 'Issue is not resolved';
+  document.getElementById('kci-date').value = '2026-11-06';
+  loadGatekeepingForSession();
   refreshFlowVisibility();
 
   // Reset step button labels
@@ -2862,67 +2971,6 @@ function resetCallForm() {
 
   // Back to Step 1
   goToStep(1);
-}
-
-function toggleFormType() {
-  const val = document.getElementById('form-type-selector').value;
-  document.getElementById('call-notes-section').style.display      = val === 'call'      ? 'block' : 'none';
-  document.getElementById('complaint-notes-section').style.display = val === 'complaint' ? 'block' : 'none';
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// COMPLAINT
-// ═══════════════════════════════════════════════════════════════════
-function generateComplaintNote() {
-  const nameAcc = document.getElementById('comp-name').value.trim();
-  const reason  = document.getElementById('comp-reason').value;
-  const outcome = document.getElementById('comp-outcome').value.trim();
-  const details = document.getElementById('comp-details').value.trim();
-
-  if (!reason && !details) {
-    alert('Please complete complaint reason or details.'); return;
-  }
-
-  const sections = [];
-  sections.push({ heading: 'COMPLAINT LOGGED', lines: nameAcc ? ['Customer: ' + nameAcc] : [] });
-  const detailLines = [];
-  if (reason)  detailLines.push('Reason: ' + reason);
-  if (details) detailLines.push('Details: ' + details);
-  sections.push({ heading: 'DETAILS', lines: detailLines });
-  sections.push({ heading: 'OUTCOME', lines: outcome ? ['Requested Action / Outcome: ' + outcome] : [] });
-
-  const finalNote = buildNoteSections(sections);
-  document.getElementById('comp-note-output').textContent = finalNote;
-  document.getElementById('comp-output-card').classList.add('visible');
-  document.getElementById('comp-copy-btn').classList.add('visible');
-  document.getElementById('comp-download-btn').classList.add('visible');
-
-  saveNoteToLog('complaint', nameAcc || 'Complaint', finalNote);
-}
-
-function copyComplaint() {
-  navigator.clipboard.writeText(document.getElementById('comp-note-output').textContent).then(() => {
-    const btn = document.getElementById('comp-copy-btn');
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => btn.textContent = 'Copy Note', 2000);
-  });
-}
-
-function downloadComplaint() {
-  const text = document.getElementById('comp-note-output').textContent;
-  const acc  = document.getElementById('comp-name').value.trim().replace(/[^a-z0-9_-]/gi,'_') || 'Complaint';
-  const date = new Date().toISOString().split('T')[0];
-  triggerDownload(text, acc + '_Complaint_' + date + '.txt');
-}
-
-function clearComplaint() {
-  if (!confirm('Clear complaint fields?')) return;
-  ['comp-name','comp-reason','comp-outcome','comp-details'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  document.getElementById('comp-output-card').classList.remove('visible');
-  document.getElementById('comp-copy-btn').classList.remove('visible');
-  document.getElementById('comp-download-btn').classList.remove('visible');
 }
 
 // ═══════════════════════════════════════════════════════════════════
