@@ -60,7 +60,7 @@
     --bg-gradient-2: #1c0f30;
     --blob-1: rgba(157,92,255,.35);
     --blob-2: rgba(255,45,120,.22);
-    --surface: rgba(38,27,58,0.55);
+    --surface: rgba(73, 48, 121, 0.55);
     --surface-solid: rgba(24,17,38,0.92);
     --surface-border: rgba(255,255,255,0.09);
     --text: #f3eefc;
@@ -169,6 +169,51 @@
   .log-pill:hover { background: rgba(255,255,255,.26); }
   .log-pill.danger { background: rgba(230,0,80,.18); border-color: rgba(230,0,80,.4); }
   .log-pill.danger:hover { background: rgba(230,0,80,.35); }
+
+  .notes-manager {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    align-items: center; justify-content: center;
+    padding: 1rem; background: rgba(10,8,20,.62);
+  }
+  .notes-manager.open { display: flex; }
+  .notes-manager-panel {
+    width: min(760px, 100%); max-height: min(85vh, 900px);
+    display: flex; flex-direction: column;
+    background: var(--surface-solid); color: var(--text);
+    border: 1px solid var(--surface-border); border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,.3); padding: 1rem;
+  }
+  .notes-manager-header {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; margin-bottom: .75rem;
+  }
+  .notes-manager-header h2 { margin: 0; color: var(--bt-purple); font-size: 16px; }
+  .notes-manager-search { margin-bottom: .75rem; }
+  .notes-manager-list { overflow-y: auto; min-height: 100px; }
+  .saved-note {
+    border: 1px solid var(--input-border); border-radius: var(--radius);
+    padding: .8rem; margin-bottom: .65rem; background: var(--input-bg);
+  }
+  .saved-note-header {
+    display: flex; justify-content: space-between; gap: .75rem;
+    align-items: flex-start; margin-bottom: .45rem;
+  }
+  .saved-note-title { font-weight: 800; font-size: 13px; overflow-wrap: anywhere; }
+  .saved-note-date { color: var(--text-muted); font-size: 11px; text-align: right; }
+  .saved-note-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .6rem; }
+  .saved-note-actions button, .notes-manager-header button {
+    padding: 7px 11px; font-size: 11px;
+  }
+  .saved-note-preview, .saved-note-editor {
+    margin-top: .65rem; white-space: pre-wrap; overflow-wrap: anywhere;
+    font-size: 12px; line-height: 1.5;
+  }
+  .saved-note-preview {
+    max-height: 240px; overflow-y: auto; padding: .65rem;
+    border-radius: 8px; background: var(--surface);
+  }
+  .saved-note-editor { min-height: 180px; }
+  .notes-manager-empty { color: var(--text-muted); padding: 1.5rem .5rem; text-align: center; }
 
   .page {
     max-width: 1200px;
@@ -523,7 +568,8 @@
         <span class="theme-switch-knob"></span>
       </button>
     </div>
-    <div class="log-pill" onclick="downloadAllNotes()" title="Download all notes as one .txt file">
+    <div class="log-pill" id="notes-manager-trigger" onclick="openNotesManager()"
+      role="button" tabindex="0" aria-haspopup="dialog" title="View, search and manage saved notes">
       <span id="log-count">0</span> Notes
     </div>
     <div class="log-pill danger" onclick="clearSessionLog()" title="Clear session log">Clear</div>
@@ -965,6 +1011,20 @@
 
 </div>
 
+<div id="notes-manager" class="notes-manager" aria-hidden="true"
+  onclick="if(event.target === this) closeNotesManager()">
+  <section class="notes-manager-panel" role="dialog" aria-modal="true" aria-labelledby="notes-manager-title">
+    <div class="notes-manager-header">
+      <h2 id="notes-manager-title">Saved Notes (<span id="notes-manager-count">0</span>)</h2>
+      <button type="button" class="btn-secondary" onclick="closeNotesManager()" aria-label="Close saved notes">Close</button>
+    </div>
+    <input id="notes-manager-search" class="notes-manager-search" type="search"
+      placeholder="Search customer name, account or service reference..."
+      aria-label="Search saved notes" oninput="renderSavedNotes()">
+    <div id="notes-manager-list" class="notes-manager-list" aria-live="polite"></div>
+  </section>
+</div>
+
 <div class="footer">BT Call Notes Generator — offline tool — no data leaves this page</div>
 
 <script>
@@ -1043,11 +1103,153 @@ function saveNoteToLog(type, refLabel, text) {
 }
 
 function updateLogCounter() {
-  const n = getLog().length;
+  const log = getLog();
+  const n = log.length;
   ['log-count','log-count2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = n;
   });
+  const managerCount = document.getElementById('notes-manager-count');
+  if (managerCount) managerCount.textContent = n;
+  const manager = document.getElementById('notes-manager');
+  if (manager && manager.classList.contains('open')) renderSavedNotes();
+}
+
+function openNotesManager() {
+  const manager = document.getElementById('notes-manager');
+  if (!manager) return;
+  manager.classList.add('open');
+  manager.setAttribute('aria-hidden', 'false');
+  renderSavedNotes();
+  document.getElementById('notes-manager-search')?.focus();
+}
+
+function closeNotesManager() {
+  const manager = document.getElementById('notes-manager');
+  if (!manager) return;
+  manager.classList.remove('open');
+  manager.setAttribute('aria-hidden', 'true');
+  document.getElementById('notes-manager-trigger')?.focus();
+}
+
+function renderSavedNotes() {
+  const list = document.getElementById('notes-manager-list');
+  const query = (document.getElementById('notes-manager-search')?.value || '').trim().toLowerCase();
+  if (!list) return;
+
+  const entries = getLog().map((note, index) => ({ note, index })).reverse();
+  const matches = entries.filter(({ note }) => [
+    note.type, note.refLabel, note.text, note.ts
+  ].some(value => String(value || '').toLowerCase().includes(query)));
+  list.replaceChildren();
+
+  if (!matches.length) {
+    const empty = document.createElement('div');
+    empty.className = 'notes-manager-empty';
+    empty.textContent = entries.length ? 'No saved notes match your search.' : 'No saved notes yet.';
+    list.appendChild(empty);
+    return;
+  }
+
+  matches.forEach(({ note, index }) => {
+    const card = document.createElement('article');
+    card.className = 'saved-note';
+
+    const header = document.createElement('div');
+    header.className = 'saved-note-header';
+    const title = document.createElement('div');
+    title.className = 'saved-note-title';
+    title.textContent = `${String(note.type || 'note').toUpperCase()} - ${String(note.refLabel || 'Saved note')}`;
+    const date = document.createElement('div');
+    date.className = 'saved-note-date';
+    const parsedDate = new Date(note.ts);
+    date.textContent = Number.isNaN(parsedDate.getTime()) ? 'Date unavailable' : parsedDate.toLocaleString('en-GB');
+    header.append(title, date);
+
+    const preview = document.createElement('div');
+    preview.className = 'saved-note-preview';
+    preview.hidden = true;
+    preview.textContent = String(note.text || '');
+
+    const editor = document.createElement('div');
+    editor.hidden = true;
+    const textarea = document.createElement('textarea');
+    textarea.className = 'saved-note-editor';
+    textarea.setAttribute('aria-label', 'Edit saved note');
+    textarea.value = String(note.text || '');
+    editor.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'saved-note-actions';
+    const previewButton = document.createElement('button');
+    previewButton.type = 'button';
+    previewButton.className = 'btn-secondary';
+    previewButton.textContent = 'Preview';
+    previewButton.addEventListener('click', () => {
+      preview.hidden = !preview.hidden;
+      previewButton.textContent = preview.hidden ? 'Preview' : 'Hide Preview';
+    });
+
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'btn-secondary';
+    editButton.textContent = 'Edit';
+    editButton.addEventListener('click', () => {
+      if (!editor.hidden) textarea.value = String(note.text || '');
+      editor.hidden = !editor.hidden;
+      saveButton.hidden = editor.hidden;
+      editButton.textContent = editor.hidden ? 'Edit' : 'Cancel Edit';
+      if (!editor.hidden) textarea.focus();
+    });
+
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.className = 'btn-primary';
+    saveButton.textContent = 'Save Changes';
+    saveButton.hidden = true;
+    saveButton.addEventListener('click', () => {
+      const currentLog = getLog();
+      if (!currentLog[index]) {
+        alert('This saved note is no longer available. Refresh the notes list and try again.');
+        return;
+      }
+      currentLog[index].text = textarea.value;
+      try {
+        localStorage.setItem(LOG_KEY, JSON.stringify(currentLog));
+      } catch (error) {
+        console.error('Unable to save edited note.', error);
+        alert('The edited note could not be saved in browser storage.');
+        return;
+      }
+      updateLogCounter();
+    });
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'btn-secondary';
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', () => deleteSavedNote(index));
+
+    actions.append(previewButton, editButton, saveButton, deleteButton);
+    card.append(header, preview, editor, actions);
+    list.appendChild(card);
+  });
+}
+
+function deleteSavedNote(index) {
+  const log = getLog();
+  const note = log[index];
+  if (!note) return;
+  if (!confirm(`Delete the saved note for "${String(note.refLabel || 'Saved note')}"?`)) return;
+  log.splice(index, 1);
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+  } catch (error) {
+    console.error('Unable to delete saved note.', error);
+    alert('The note could not be deleted from browser storage.');
+    return;
+  }
+  updateLogCounter();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1091,6 +1293,20 @@ function clearScratchpad() {
 }
 
 window.addEventListener('DOMContentLoaded', loadScratchpad);
+window.addEventListener('DOMContentLoaded', () => {
+  const trigger = document.getElementById('notes-manager-trigger');
+  trigger?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openNotesManager();
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.getElementById('notes-manager')?.classList.contains('open')) {
+      closeNotesManager();
+    }
+  });
+});
 
 function downloadAllNotes() {
   const log = getLog();
