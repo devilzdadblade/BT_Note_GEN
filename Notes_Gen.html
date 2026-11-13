@@ -1132,11 +1132,78 @@ function getLog() {
   catch(e) { return []; }
 }
 
-function saveNoteToLog(type, refLabel, text) {
+function normalizeNoteIdentityPart(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function createCallNoteKey(identity) {
+  return JSON.stringify([
+    normalizeNoteIdentityPart(identity.serviceId),
+    normalizeNoteIdentityPart(identity.customerName),
+    normalizeNoteIdentityPart(identity.mobile)
+  ]);
+}
+
+function getStoredCallNoteKey(note) {
+  if (note.type !== 'call') return '';
+  if (note.dedupeKey) return note.dedupeKey;
+
+  const text = String(note.text || '');
+  const getField = label => text.match(new RegExp('^' + label + ':\\s*(.*)$', 'im'))?.[1] || '';
+  const identity = {
+    serviceId: getField('Service ID') || note.refLabel,
+    customerName: getField('Customer Name'),
+    mobile: getField('Mobile Contact Number')
+  };
+  if (!identity.serviceId || !identity.customerName || !identity.mobile) return '';
+  return createCallNoteKey(identity);
+}
+
+function saveNoteToLog(type, refLabel, text, identity) {
   const log = getLog();
-  log.push({ id: Date.now(), type, refLabel, text, ts: new Date().toISOString() });
-  try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch(e) {
-    console.warn('localStorage full — note not saved to log');
+  const timestamp = new Date().toISOString();
+  let noteToSave;
+
+  if (type === 'call' && identity) {
+    const dedupeKey = createCallNoteKey(identity);
+    const matchingIndexes = [];
+    log.forEach((note, index) => {
+      if (getStoredCallNoteKey(note) === dedupeKey) matchingIndexes.push(index);
+    });
+
+    if (matchingIndexes.length) {
+      const keeperIndex = matchingIndexes[matchingIndexes.length - 1];
+      noteToSave = {
+        ...log[keeperIndex],
+        type,
+        refLabel,
+        text,
+        ts: timestamp,
+        dedupeKey
+      };
+      log[keeperIndex] = noteToSave;
+      matchingIndexes.slice(0, -1).reverse().forEach(index => log.splice(index, 1));
+    }
+  }
+
+  if (!noteToSave) {
+    noteToSave = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      type,
+      refLabel,
+      text,
+      ts: timestamp,
+      ...(type === 'call' && identity ? { dedupeKey: createCallNoteKey(identity) } : {})
+    };
+    log.push(noteToSave);
+  }
+
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+  } catch (error) {
+    console.error('Unable to save note to browser storage.', error);
+    alert('The note could not be saved in browser storage.');
+    return;
   }
   updateLogCounter();
 }
@@ -1176,7 +1243,7 @@ function renderSavedNotes() {
   const query = (document.getElementById('notes-manager-search')?.value || '').trim().toLowerCase();
   if (!list) return;
 
-  const entries = getLog().map((note, index) => ({ note, index })).reverse();
+  const entries = getLog().map(note => ({ note, id: note.id })).reverse();
   const matches = entries.filter(({ note }) => [
     note.type, note.refLabel, note.text, note.ts
   ].some(value => String(value || '').toLowerCase().includes(query)));
@@ -1190,7 +1257,7 @@ function renderSavedNotes() {
     return;
   }
 
-  matches.forEach(({ note, index }) => {
+  matches.forEach(({ note, id }) => {
     const card = document.createElement('article');
     card.className = 'saved-note';
 
@@ -1248,11 +1315,12 @@ function renderSavedNotes() {
     saveButton.hidden = true;
     saveButton.addEventListener('click', () => {
       const currentLog = getLog();
-      if (!currentLog[index]) {
+      const noteIndex = currentLog.findIndex(entry => entry.id === id);
+      if (noteIndex === -1) {
         alert('This saved note is no longer available. Refresh the notes list and try again.');
         return;
       }
-      currentLog[index].text = textarea.value;
+      currentLog[noteIndex].text = textarea.value;
       try {
         localStorage.setItem(LOG_KEY, JSON.stringify(currentLog));
       } catch (error) {
@@ -1267,7 +1335,7 @@ function renderSavedNotes() {
     deleteButton.type = 'button';
     deleteButton.className = 'btn-secondary';
     deleteButton.textContent = 'Delete';
-    deleteButton.addEventListener('click', () => deleteSavedNote(index));
+    deleteButton.addEventListener('click', () => deleteSavedNote(id));
 
     actions.append(previewButton, editButton, saveButton, deleteButton);
     card.append(header, preview, editor, actions);
@@ -1275,10 +1343,11 @@ function renderSavedNotes() {
   });
 }
 
-function deleteSavedNote(index) {
+function deleteSavedNote(id) {
   const log = getLog();
+  const index = log.findIndex(entry => entry.id === id);
+  if (index === -1) return;
   const note = log[index];
-  if (!note) return;
   if (!confirm(`Delete the saved note for "${String(note.refLabel || 'Saved note')}"?`)) return;
   log.splice(index, 1);
   try {
@@ -1742,7 +1811,7 @@ const TROUBLESHOOTING_FLOWS = {
       'Re-enter Credentials Manually',
       'Escalate to Voice SME'
     ],
-    'inbound calls not connecting': [
+    'unable to receive calls': [
       'Confirm Number Provisioned',
       'Check Inbound Routing Rules',
       'Run Inbound Call Test',
@@ -1750,12 +1819,19 @@ const TROUBLESHOOTING_FLOWS = {
       'Verify DID Mapping in Portal',
       'Escalate to Voice SME'
     ],
-    'outbound calls failing': [
+    'unable to make calls': [
       'Confirm SIP Registration Status',
       'Check Outbound CLI Permissions',
       'Test to Multiple Numbers',
       'Check Outbound Call Barring',
       'Verify SIP Trunk Channels',
+      'Escalate to Voice SME'
+    ],
+    'unable to make or receive calls': [
+      'Confirm Service and Handset Registration Status',
+      'Check Inbound and Outbound Call Routing',
+      'Verify Call Permissions and Barring',
+      'Test Inbound and Outbound Calls',
       'Escalate to Voice SME'
     ]
   },
@@ -1788,13 +1864,30 @@ const TROUBLESHOOTING_FLOWS = {
       'Re-enter Credentials Manually',
       'Escalate to Voice SME'
     ],
-    'inbound calls not connecting': [
+    'unable to receive calls': [
       'Confirm Number Provisioned',
       'Check Inbound Routing Rules',
       'Run Inbound Call Test',
       'Check Hunt Group / Auto Attendant',
       'Verify DID Mapping in Portal',
       'Escalate to Voice SME'
+    ],
+    'unable to make calls': [
+      'Confirm Cloud Voice Express App / Handset Is Registered',
+      'Verify Customer Can Sign In to Cloud Voice Express',
+      'Check Outbound Call Permissions and Barring',
+      'Test Calls to Multiple Numbers',
+      'Confirm Mobile Data / WiFi Connectivity',
+      'Escalate to Cloud Voice Express Support'
+    ],
+    'unable to make or receive calls': [
+      'Confirm Cloud Voice Express App / Handset Is Registered',
+      'Verify Customer Can Sign In to Cloud Voice Express',
+      'Check Inbound and Outbound Call Routing',
+      'Verify Call Permissions and Barring',
+      'Test Inbound and Outbound Calls',
+      'Confirm Mobile Data / WiFi Connectivity',
+      'Escalate to Cloud Voice Express Support'
     ]
   },
   network: {
@@ -2148,15 +2241,18 @@ const FAULT_TYPES = {
     { value: 'one-way audio on calls',           text: 'One Way Audio' },
     { value: 'calls dropping mid-conversation',  text: 'Calls Dropping' },
     { value: 'handset failing to register',      text: 'Registration Failure' },
-    { value: 'inbound calls not connecting',     text: 'Inbound Failure' },
-    { value: 'outbound calls failing',           text: 'Outbound Failure' },
+    { value: 'unable to receive calls',          text: 'Unable to Receive Calls' },
+    { value: 'unable to make calls',             text: 'Unable to Make Calls' },
+    { value: 'unable to make or receive calls',  text: 'Unable to Make or Receive Calls' },
     { value: 'other fault',                      text: 'Other' }
   ],
   cv_express: [
     { value: 'no dial tone on the line',         text: 'No Dial Tone' },
     { value: 'app issue',                        text: 'App Issue' },
     { value: 'handset failing to register',      text: 'Registration Failure' },
-    { value: 'inbound calls not connecting',     text: 'Inbound Failure' },
+    { value: 'unable to receive calls',          text: 'Unable to Receive Calls' },
+    { value: 'unable to make calls',             text: 'Unable to Make Calls' },
+    { value: 'unable to make or receive calls',  text: 'Unable to Make or Receive Calls' },
     { value: 'other fault',                      text: 'Other' }
   ],
   network: [
@@ -2305,12 +2401,14 @@ function handleProductChange() {
   const faultContainer = document.getElementById('fault-type-container');
   const faultExtra     = document.getElementById('fault-extra-container');
   const faultType      = document.getElementById('fault-type');
+  const tsSteps        = document.getElementById('ts-steps');
   const sinceEl        = document.getElementById('fault-since');
   const affectedEl     = document.getElementById('affected');
 
+  faultType.value = '';
+  if (tsSteps) tsSteps.value = '';
   renderProductBadges();
-  renderFaultTypeBadges(category);
-  renderGuidedFlow();
+  renderFaultTypeBadges(category, '');
   renderAdditionalActions();
 
   if (!category || !FAULT_TYPES[category]) {
@@ -2319,18 +2417,20 @@ function handleProductChange() {
     faultType.value = '';
     if (sinceEl)    sinceEl.value    = '';
     if (affectedEl) affectedEl.value = '';
+    renderGuidedFlow();
     return;
   }
 
   faultContainer.style.display = 'block';
   if (faultExtra) faultExtra.style.display = 'none';
-  faultType.value = '';
   if (sinceEl)    sinceEl.value    = '';
   if (affectedEl) affectedEl.value = '';
+  renderGuidedFlow();
 }
 
 function handleFaultTypeChange() {
   const val        = document.getElementById('fault-type').value;
+  const tsSteps    = document.getElementById('ts-steps');
   const extra      = document.getElementById('fault-extra-container');
   const start      = document.getElementById('fault-start-container');
   const affUsers   = document.getElementById('affected-users-container');
@@ -2340,6 +2440,7 @@ function handleFaultTypeChange() {
   if (extra)    extra.style.display    = val ? 'grid' : 'none';
   if (start)    start.style.display    = val ? 'flex' : 'none';
   if (affUsers) affUsers.style.display = 'none';
+  if (tsSteps) tsSteps.value = '';
   if (sinceEl)    sinceEl.value    = '';
   if (affectedEl) affectedEl.value = '';
 
@@ -2870,7 +2971,11 @@ function generateNote() {
   document.getElementById('download-btn').classList.add('visible');
   document.getElementById('output-card').scrollIntoView({ behavior:'smooth', block:'start' });
 
-  saveNoteToLog('call', serviceId, finalNote);
+  saveNoteToLog('call', serviceId, finalNote, {
+    serviceId,
+    customerName: mandatoryName,
+    mobile
+  });
 }
 
 function copyNote() {
