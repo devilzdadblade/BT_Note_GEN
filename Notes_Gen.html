@@ -655,7 +655,7 @@
         </div>
         <div class="field">
           <label>Call Time</label>
-          <input type="time" id="call-time">
+          <input type="time" id="call-time" step="1">
         </div>
       </div>
 
@@ -1108,10 +1108,39 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) updateClock();
 });
 
+let callTimeTimer;
+let callTimeClockStopped = false;
+
+function updateCallTime() {
+  const now = new Date();
+  const callTime = document.getElementById('call-time');
+  if (!callTime || callTimeClockStopped) return;
+  callTime.value = now.toTimeString().slice(0,8);
+  clearTimeout(callTimeTimer);
+  callTimeTimer = setTimeout(
+    updateCallTime,
+    1000 - now.getMilliseconds()
+  );
+}
+
+function startCallTimeClock() {
+  callTimeClockStopped = false;
+  updateCallTime();
+}
+
+function stopCallTimeClock() {
+  callTimeClockStopped = true;
+  clearTimeout(callTimeTimer);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) updateCallTime();
+});
+
 (function setDateTime() {
   const now = new Date();
   document.getElementById('call-date').value = now.toISOString().split('T')[0];
-  document.getElementById('call-time').value = now.toTimeString().slice(0,5);
+  startCallTimeClock();
 })();
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3057,7 +3086,7 @@ function resetCallForm() {
   // Reset call date/time back to now
   const now = new Date();
   document.getElementById('call-date').value = now.toISOString().split('T')[0];
-  document.getElementById('call-time').value = now.toTimeString().slice(0,5);
+  startCallTimeClock();
 
   // Hide all conditional field containers
   [
@@ -3259,6 +3288,7 @@ function validateStep(step) {
 
 function nextOrGenerate(fromStep) {
   if (!validateStep(fromStep)) return;
+  if (fromStep === 1) stopCallTimeClock();
   if (fromStep === 1 && isUnableToValidate()) {
     generateNote();
   } else {
