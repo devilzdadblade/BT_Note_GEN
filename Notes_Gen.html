@@ -1093,11 +1093,20 @@ window.addEventListener('DOMContentLoaded', () => {
 // CLOCK & AUTO DATE/TIME
 // ═══════════════════════════════════════════════════════════════════
 function updateClock() {
-  document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const now = new Date();
+  const clock = document.getElementById('clock');
+  if (!clock) return;
+  clock.textContent = now.toLocaleTimeString('en-GB', {
+    hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
+  clearTimeout(clockTimer);
+  clockTimer = setTimeout(updateClock, 1000 - now.getMilliseconds());
 }
-setInterval(updateClock, 1000);
+let clockTimer;
 updateClock();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) updateClock();
+});
 
 (function setDateTime() {
   const now = new Date();
